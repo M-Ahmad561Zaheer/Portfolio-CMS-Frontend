@@ -24,24 +24,49 @@ const AdminLogin = () => {
   const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    setLoading(true);
-    setError("");
+  if (!form.email.trim() || !form.password.trim()) {
+    setError("Please enter email and password.");
+    return;
+  }
 
-    try {
-      const res = await api.post("/Auth/login", form);
+  setLoading(true);
+  setError("");
 
-      localStorage.setItem("adminToken", res.data.token);
-      localStorage.setItem("adminUser", JSON.stringify(res.data.user));
+  try {
+    const res = await api.post("/Auth/login", {
+      email: form.email.trim(),
+      password: form.password,
+    });
 
-      navigate("/admin");
-    } catch {
-      setError("Invalid email or password.");
-    } finally {
-      setLoading(false);
+    if (!res.data?.token) {
+      throw new Error("Token was not returned by the server.");
     }
-  };
+
+    localStorage.setItem("adminToken", res.data.token);
+    localStorage.setItem("adminUser", JSON.stringify(res.data.user));
+
+    navigate("/admin", { replace: true });
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+
+    if (error.response?.status === 401) {
+      setError("Invalid email or password.");
+    } else if (error.response?.status === 500) {
+      setError("Server error occurred. Please check backend logs.");
+    } else if (error.code === "ERR_NETWORK") {
+      setError("Unable to connect to the backend server.");
+    } else {
+      setError(
+        error.response?.data?.message ||
+          "Login failed. Please try again."
+      );
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-6 text-white">
@@ -128,6 +153,7 @@ const AdminLogin = () => {
 
               <input
                 type="email"
+                required
                 placeholder="Admin Email"
                 value={form.email}
                 onChange={(e) =>
@@ -150,6 +176,7 @@ const AdminLogin = () => {
 
               <input
                 type={showPassword ? "text" : "password"}
+                required
                 placeholder="Password"
                 value={form.password}
                 onChange={(e) =>
