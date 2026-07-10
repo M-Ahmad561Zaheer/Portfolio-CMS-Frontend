@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BriefcaseBusiness,
   Cpu,
+  Download,
+  ExternalLink,
+  Github,
   Layers,
+  Linkedin,
+  Mail,
+  MessageSquareQuote,
+  Phone,
   Send,
   Sparkles,
   Terminal,
@@ -10,520 +18,1011 @@ import {
 } from "lucide-react";
 import api from "../api/api";
 
+const STORAGE_KEY = "portfolio_ai_chat_v2";
+
+const normalizeText = (value = "") =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s.+#-]/g, " ")
+    .replace(/\s+/g, " ");
+
+const includesAny = (text, words) =>
+  words.some((word) => text.includes(normalizeText(word)));
+
+const uniqueStrings = (items) =>
+  [...new Set(items.map((item) => item?.trim()).filter(Boolean))];
+
+const splitTechStack = (value = "") =>
+  value
+    .split(/[,|/]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const safeArray = (value) => (Array.isArray(value) ? value : []);
+
 const AIAssistant = () => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoadingContext, setIsLoadingContext] = useState(true);
 
   const [profile, setProfile] = useState(null);
   const [projects, setProjects] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [experiences, setExperiences] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [services, setServices] = useState([]);
 
   const chatEndRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
-  const initialWelcomeMessage = {
-    sender: "bot",
-    text: "Hi, I am your AI portfolio assistant. Ask me about projects, skills, services, experience, blogs, testimonials, or contact details.",
-    type: "text",
-  };
+  const initialWelcomeMessage = useMemo(
+    () => ({
+      sender: "bot",
+      type: "welcome",
+      text: "Hi! I’m Ahmad’s portfolio assistant. I can help you explore projects, skills, services, experience, blogs, testimonials, resume, and contact details.",
+    }),
+    []
+  );
 
-  const [messages, setMessages] = useState([initialWelcomeMessage]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
 
-  const services = [
-    "Web Development",
-    "ASP.NET Core API Development",
-    "React Frontend Development",
-    "Admin Dashboard Development",
-    "CRM System Development",
-    "Business Process Automation",
-    "Portfolio CMS Development",
-  ];
+      return Array.isArray(parsed) && parsed.length > 0
+        ? parsed
+        : [initialWelcomeMessage];
+    } catch {
+      return [initialWelcomeMessage];
+    }
+  });
 
   useEffect(() => {
-    loadData();
+    loadPortfolioContext();
+
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open, isTyping]);
 
-  const loadData = async () => {
-    try {
-      const res = await api.get("/Profile");
-      setProfile(res.data);
-    } catch {
-      setProfile(null);
-    }
+  const loadPortfolioContext = async () => {
+    setIsLoadingContext(true);
 
-    try {
-      const res = await api.get("/Projects");
-      setProjects(res.data || []);
-    } catch {
-      setProjects([]);
-    }
+    const requests = [
+      ["profile", "/Profile"],
+      ["projects", "/Projects"],
+      ["blogs", "/Blogs"],
+      ["testimonials", "/Testimonials"],
+      ["experiences", "/Experiences"],
+      ["skills", "/Skills"],
+      ["services", "/Services"],
+    ];
 
-    try {
-      const res = await api.get("/Blogs");
-      setBlogs(res.data || []);
-    } catch {
-      setBlogs([]);
-    }
-
-    try {
-      const res = await api.get("/Testimonials");
-      setTestimonials(res.data || []);
-    } catch {
-      setTestimonials([]);
-    }
-
-    try {
-      const res = await api.get("/Experiences");
-      setExperiences(res.data || []);
-    } catch {
-      setExperiences([]);
-    }
-  };
-
-  const getBotReplyStructure = (question) => {
-    const q = question.toLowerCase();
-
-    if (q.includes("react") || q.includes(".net") || q.includes("dotnet")) {
-      return {
-        text: "Yes. This portfolio uses a modern full-stack architecture:",
-        type: "tech",
-        data: [
-          "React",
-          "Tailwind CSS",
-          "ASP.NET Core Web API",
-          "JWT Authentication",
-          "SQLite Database",
-          "Admin CMS",
-        ],
-      };
-    }
-
-    if (q.includes("cms") || q.includes("admin")) {
-      return {
-        text: "This portfolio includes a custom CMS. The admin can manage projects, blogs, testimonials, experiences, profile content, contact messages, and replies without changing code.",
-        type: "text",
-      };
-    }
-
-    if (
-      q.includes("name") ||
-      q.includes("who is") ||
-      q.includes("about you") ||
-      q.includes("about")
-    ) {
-      return {
-        text: profile
-          ? `${profile.fullName} is a ${profile.role}. ${profile.shortBio || profile.about}`
-          : "This portfolio belongs to Ahmad Zaheer, a .NET and React full-stack developer.",
-        type: "text",
-      };
-    }
-
-    const matchedProject = projects.find((p) =>
-      q.includes(p.title?.toLowerCase())
+    const results = await Promise.allSettled(
+      requests.map(([, endpoint]) => api.get(endpoint))
     );
 
-    if (matchedProject) {
-      return {
-        text: `Here are the details for ${matchedProject.title}:`,
-        type: "project_single",
-        data: matchedProject,
-      };
-    }
+    results.forEach((result, index) => {
+      const [key] = requests[index];
+      const data =
+        result.status === "fulfilled" ? result.value?.data : null;
 
-    if (q.includes("project") || q.includes("portfolio")) {
-      if (projects.length === 0) {
+      if (key === "profile") setProfile(data || null);
+      if (key === "projects") setProjects(safeArray(data));
+      if (key === "blogs") setBlogs(safeArray(data));
+      if (key === "testimonials") setTestimonials(safeArray(data));
+      if (key === "experiences") setExperiences(safeArray(data));
+      if (key === "skills") setSkills(safeArray(data));
+      if (key === "services") setServices(safeArray(data));
+    });
+
+    setIsLoadingContext(false);
+  };
+
+  const groupedSkills = useMemo(() => {
+    return skills.reduce((acc, skill) => {
+      const category = skill.category || "Other";
+
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+
+      acc[category].push(skill.name);
+      return acc;
+    }, {});
+  }, [skills]);
+
+  const technologyList = useMemo(() => {
+    const fromSkills = skills.map((skill) => skill.name);
+    const fromProjects = projects.flatMap((project) =>
+      splitTechStack(project.techStack)
+    );
+
+    return uniqueStrings([
+      ...fromSkills,
+      ...fromProjects,
+      "React",
+      "Tailwind CSS",
+      "ASP.NET Core",
+      "C#",
+      "REST APIs",
+      "JWT Authentication",
+      "Entity Framework Core",
+      "PostgreSQL",
+      "Neon",
+      "Docker",
+      "Render",
+      "Vercel",
+    ]);
+  }, [projects, skills]);
+
+  const findMatchingProject = (query) => {
+    const normalizedQuery = normalizeText(query);
+
+    return projects.find((project) => {
+      const title = normalizeText(project.title);
+      const description = normalizeText(
+        `${project.description || ""} ${project.longDescription || ""}`
+      );
+
+      return (
+        (title && normalizedQuery.includes(title)) ||
+        title
+          .split(" ")
+          .filter((word) => word.length > 2)
+          .some((word) => normalizedQuery.includes(word)) ||
+        description
+          .split(" ")
+          .filter((word) => word.length > 5)
+          .some((word) => normalizedQuery.includes(word))
+      );
+    });
+  };
+
+  const createResponse = (question) => {
+    const q = normalizeText(question);
+    const matchingProject = findMatchingProject(q);
+
+    const asksForContact = includesAny(q, [
+      "contact",
+      "email",
+      "phone",
+      "reach",
+      "linkedin",
+      "github",
+      "connect",
+    ]);
+
+    const asksForResume = includesAny(q, [
+      "resume",
+      "cv",
+      "download cv",
+      "download resume",
+    ]);
+
+    const asksForProject = includesAny(q, [
+      "project",
+      "portfolio",
+      "work",
+      "built",
+      "developed",
+      "application",
+      "software",
+      "case study",
+    ]);
+
+    const asksForTechnology = includesAny(q, [
+      "skill",
+      "skills",
+      "technology",
+      "technologies",
+      "tech stack",
+      "stack",
+      "react",
+      ".net",
+      "dotnet",
+      "asp.net",
+      "postgres",
+      "database",
+    ]);
+
+    if (asksForResume) {
+      if (!profile?.resumeUrl) {
         return {
-          text: "No projects are available yet. Admin can add projects from the dashboard.",
           type: "text",
+          text: "A resume has not been uploaded yet. You can still contact Ahmad through the contact form.",
         };
       }
 
       return {
-        text: "Here are the current projects in this portfolio:",
+        type: "resume",
+        text: "You can view or download Ahmad’s latest resume below.",
+        data: {
+          resumeUrl: profile.resumeUrl,
+          fullName: profile.fullName || "Ahmad Zaheer",
+        },
+      };
+    }
+
+    if (asksForContact) {
+      return {
+        type: "contact",
+        text: "Here are the available contact options:",
+        data: {
+          fullName: profile?.fullName || "Ahmad Zaheer",
+          email: profile?.email,
+          phone: profile?.phone,
+          location: profile?.location,
+          githubUrl: profile?.githubUrl,
+          linkedinUrl: profile?.linkedinUrl,
+        },
+      };
+    }
+
+    if (matchingProject && (asksForProject || asksForTechnology)) {
+      return {
+        type: "project_single",
+        text: `Here are the details for ${matchingProject.title}:`,
+        data: matchingProject,
+      };
+    }
+
+    if (
+      includesAny(q, [
+        "who is",
+        "about",
+        "your name",
+        "developer",
+        "tell me about ahmad",
+        "profile",
+      ])
+    ) {
+      return {
+        type: "about",
+        text: profile
+          ? `${profile.fullName} is a ${profile.role}. ${
+              profile.shortBio || profile.about || ""
+            }`
+          : "This portfolio belongs to Ahmad Zaheer, a full-stack developer specializing in React and ASP.NET Core.",
+        data: profile,
+      };
+    }
+
+    if (asksForTechnology) {
+      return {
+        type: "skills",
+        text: "Here is the current technical stack and skill set:",
+        data: {
+          groupedSkills,
+          technologies: technologyList,
+        },
+      };
+    }
+
+    if (
+      includesAny(q, [
+        "service",
+        "services",
+        "offer",
+        "hire",
+        "freelance",
+        "available",
+        "what can you build",
+      ])
+    ) {
+      const dynamicServices =
+        services.length > 0
+          ? services
+          : [
+              {
+                title: "Web Development",
+                description: "Modern responsive web applications.",
+              },
+              {
+                title: "ASP.NET Core APIs",
+                description: "Secure REST APIs and backend systems.",
+              },
+              {
+                title: "Admin Dashboards",
+                description: "Custom content management and business dashboards.",
+              },
+              {
+                title: "Business Automation",
+                description: "Workflow automation and custom software solutions.",
+              },
+            ];
+
+      return {
+        type: "services",
+        text: "These are the services currently available:",
+        data: dynamicServices,
+      };
+    }
+
+    if (asksForProject) {
+      if (projects.length === 0) {
+        return {
+          type: "text",
+          text: "No portfolio projects are available yet.",
+        };
+      }
+
+      return {
         type: "projects_list",
+        text: "Here are the current portfolio projects:",
         data: projects,
       };
     }
 
     if (
-      q.includes("skill") ||
-      q.includes("technology") ||
-      q.includes("tech stack") ||
-      q.includes("tech")
-    ) {
-      const dynamicTech = projects
-        .map((p) => p.techStack)
-        .filter(Boolean)
-        .join(", ");
-
-      return {
-        text: "Core technical skills and stack include:",
-        type: "tech",
-        data: dynamicTech
-          ? [
-              ...new Set(
-                dynamicTech
-                  .split(",")
-                  .map((x) => x.trim())
-                  .filter(Boolean)
-              ),
-              "React",
-              "ASP.NET Core",
-              "REST APIs",
-              "JWT Auth",
-              "SQLite / SQL",
-            ]
-          : [
-              "React",
-              "Tailwind CSS",
-              "ASP.NET Core",
-              "C#",
-              "REST APIs",
-              "JWT Authentication",
-              "SQLite / SQL",
-            ],
-      };
-    }
-
-    if (
-      q.includes("service") ||
-      q.includes("offer") ||
-      q.includes("work") ||
-      q.includes("build")
-    ) {
-      return {
-        text: "Professional services available:",
-        type: "services",
-        data: services,
-      };
-    }
-
-    if (
-      q.includes("experience") ||
-      q.includes("journey") ||
-      q.includes("work history")
+      includesAny(q, [
+        "experience",
+        "journey",
+        "work history",
+        "employment",
+        "career",
+      ])
     ) {
       if (experiences.length === 0) {
         return {
-          text: "No experience records are available yet. Admin can add them from the dashboard.",
           type: "text",
+          text: "No experience records are available yet.",
         };
       }
 
       return {
-        text: "Here is the professional experience listed in this portfolio:",
-        type: "services",
-        data: experiences.map(
-          (exp) =>
-            `${exp.title} at ${exp.company} (${exp.startDate} - ${exp.endDate})`
-        ),
+        type: "experiences",
+        text: "Here is Ahmad’s professional journey:",
+        data: experiences,
       };
     }
 
     if (
-      q.includes("blog") ||
-      q.includes("article") ||
-      q.includes("writing")
+      includesAny(q, ["blog", "blogs", "article", "articles", "writing"])
     ) {
       if (blogs.length === 0) {
         return {
-          text: "No blog articles are published yet.",
           type: "text",
+          text: "No blog articles are published yet.",
         };
       }
 
       return {
-        text: "Latest blog articles available:",
-        type: "services",
-        data: blogs.map((blog) => blog.title),
+        type: "blogs",
+        text: "Here are the latest published articles:",
+        data: blogs.slice(0, 5),
       };
     }
 
     if (
-      q.includes("testimonial") ||
-      q.includes("client review") ||
-      q.includes("review")
+      includesAny(q, [
+        "testimonial",
+        "testimonials",
+        "client review",
+        "reviews",
+        "feedback",
+      ])
     ) {
       if (testimonials.length === 0) {
         return {
-          text: "No client testimonials are available yet.",
           type: "text",
+          text: "No client testimonials are available yet.",
         };
       }
 
       return {
-        text: "Here are client testimonials from the portfolio:",
-        type: "services",
-        data: testimonials.map(
-          (t) => `${t.clientName}: ${t.review}`
-        ),
+        type: "testimonials",
+        text: "Here is recent client feedback:",
+        data: testimonials.slice(0, 5),
       };
     }
 
     if (
-      q.includes("contact") ||
-      q.includes("email") ||
-      q.includes("phone") ||
-      q.includes("reach")
+      includesAny(q, ["price", "cost", "budget", "charges", "quote", "estimate"])
     ) {
       return {
-        text: profile
-          ? `You can contact ${profile.fullName} via email: ${profile.email}, phone: ${profile.phone}, location: ${profile.location}. You can also submit the contact form on this website.`
-          : "You can use the contact form on this website to send a message.",
-        type: "text",
+        type: "budget",
+        text: "Project cost depends on scope, features, timeline, integrations, and complexity. Share your requirements through the contact form to receive a tailored estimate.",
       };
     }
 
     if (
-      q.includes("available") ||
-      q.includes("hire") ||
-      q.includes("freelance")
+      includesAny(q, [
+        "cms",
+        "admin panel",
+        "dashboard",
+        "manage content",
+        "content management",
+      ])
     ) {
       return {
-        text: profile
-          ? `${profile.fullName} is available for React, ASP.NET Core, admin dashboard, CRM, portfolio CMS, and business automation projects. Please send your requirements through the contact form.`
-          : "Yes, you can contact through the contact form for full-stack development work.",
-        type: "text",
-      };
-    }
-
-    if (
-      q.includes("price") ||
-      q.includes("cost") ||
-      q.includes("budget") ||
-      q.includes("charges")
-    ) {
-      return {
-        text: "Project cost depends on scope, features, timeline, and complexity. Please share your requirements through the contact form, and the admin can reply directly by email from the dashboard.",
-        type: "text",
+        type: "cms",
+        text: "This portfolio includes a custom admin CMS for managing projects, blogs, testimonials, experiences, skills, services, profile details, resume, contact messages, and replies.",
       };
     }
 
     return {
-      text: "I can answer questions about projects, skills, services, experience, blogs, testimonials, contact details, CMS features, React, .NET, hiring availability, and project budget.",
-      type: "text",
+      type: "help",
+      text: "I can help with projects, technologies, services, experience, blogs, testimonials, resume, pricing, CMS features, and contact information.",
     };
   };
 
   const handleMessageSubmit = (textToSend) => {
-    if (!textToSend.trim() || isTyping) return;
+    const cleanText = textToSend.trim();
+
+    if (!cleanText || isTyping) return;
 
     setMessages((prev) => [
       ...prev,
-      { sender: "user", text: textToSend, type: "text" },
+      {
+        sender: "user",
+        type: "text",
+        text: cleanText,
+      },
     ]);
 
+    setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const reply = getBotReplyStructure(textToSend);
+    typingTimerRef.current = setTimeout(() => {
+      const response = createResponse(cleanText);
 
       setMessages((prev) => [
         ...prev,
         {
           sender: "bot",
-          text: reply.text,
-          type: reply.type,
-          data: reply.data,
+          ...response,
         },
       ]);
 
       setIsTyping(false);
-    }, 700);
+    }, 600);
   };
 
-  const clearChatLogs = () => {
-    if (window.confirm("Do you want to clear current chat?")) {
-      setMessages([initialWelcomeMessage]);
+  const clearChat = () => {
+    setMessages([initialWelcomeMessage]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  const quickPrompts = useMemo(() => {
+    const prompts = [
+      { label: "Projects", query: "Show me your portfolio projects" },
+      { label: "Tech Stack", query: "What is your tech stack?" },
+      { label: "Services", query: "What services do you offer?" },
+      { label: "Experience", query: "Show your experience" },
+    ];
+
+    if (profile?.resumeUrl) {
+      prompts.push({
+        label: "Resume",
+        query: "Show me your resume",
+      });
     }
+
+    return prompts;
+  }, [profile]);
+
+  const renderBotContent = (message) => {
+    if (message.type === "welcome") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid gap-2 text-xs">
+            {[
+              "Explore projects and case studies",
+              "Review skills and technologies",
+              "Check services and availability",
+              "View resume and contact details",
+            ].map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 text-slate-300"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "skills") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          {Object.keys(message.data?.groupedSkills || {}).length > 0 ? (
+            <div className="space-y-3">
+              {Object.entries(message.data.groupedSkills).map(
+                ([category, items]) => (
+                  <div
+                    key={category}
+                    className="rounded-xl border border-white/5 bg-white/[0.03] p-3"
+                  >
+                    <p className="mb-2 text-xs font-semibold text-emerald-400">
+                      {category}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-md border border-emerald-500/10 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {message.data?.technologies?.map((technology) => (
+                <span
+                  key={technology}
+                  className="rounded-md border border-emerald-500/10 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300"
+                >
+                  {technology}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (message.type === "services") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid gap-2">
+            {message.data?.map((service) => (
+              <div
+                key={service.id || service.title}
+                className="rounded-xl border border-white/5 bg-white/[0.03] p-3"
+              >
+                <p className="text-xs font-semibold text-white">
+                  {service.title}
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                  {service.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "projects_list") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid max-h-56 gap-2 overflow-y-auto">
+            {message.data?.map((project) => (
+              <button
+                key={project.id || project.title}
+                type="button"
+                onClick={() =>
+                  handleMessageSubmit(`Tell me about ${project.title}`)
+                }
+                className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3 text-left transition hover:border-emerald-500/20 hover:bg-white/5"
+              >
+                <div className="flex items-center gap-3">
+                  <Layers
+                    size={15}
+                    className="shrink-0 text-emerald-400"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-slate-200">
+                      {project.title}
+                    </p>
+                    <p className="mt-1 line-clamp-1 text-[10px] text-slate-500">
+                      {project.techStack}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-[10px] text-slate-500 group-hover:text-emerald-400">
+                  View →
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "project_single") {
+      const project = message.data || {};
+
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="space-y-3 rounded-xl border border-white/5 bg-white/[0.03] p-3">
+            {project.imageUrl && (
+              <img
+                src={project.imageUrl}
+                alt={project.title}
+                className="h-28 w-full rounded-lg object-cover"
+              />
+            )}
+
+            <p className="text-xs leading-5 text-slate-300">
+              {project.longDescription || project.description}
+            </p>
+
+            {project.techStack && (
+              <div className="flex flex-wrap gap-1.5">
+                {splitTechStack(project.techStack).map((technology) => (
+                  <span
+                    key={technology}
+                    className="rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300"
+                  >
+                    {technology}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {project.githubUrl && (
+                <a
+                  href={project.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[11px] text-slate-200 transition hover:border-emerald-400"
+                >
+                  <Github size={13} />
+                  Source
+                </a>
+              )}
+
+              {project.liveUrl && (
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-semibold text-slate-950"
+                >
+                  <ExternalLink size={13} />
+                  Live Demo
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "experiences") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="space-y-2 border-l border-emerald-500/30 pl-3">
+            {message.data?.map((experience) => (
+              <div
+                key={experience.id}
+                className="relative rounded-xl border border-white/5 bg-white/[0.03] p-3"
+              >
+                <span className="absolute -left-[17px] top-4 h-2 w-2 rounded-full bg-emerald-400" />
+                <p className="text-xs font-semibold text-white">
+                  {experience.title}
+                </p>
+                <p className="mt-1 text-[11px] text-emerald-400">
+                  {experience.company}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {experience.startDate} — {experience.endDate}
+                </p>
+                {experience.description && (
+                  <p className="mt-2 text-[11px] leading-5 text-slate-400">
+                    {experience.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "blogs") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid gap-2">
+            {message.data?.map((blog) => (
+              <div
+                key={blog.id}
+                className="overflow-hidden rounded-xl border border-white/5 bg-white/[0.03]"
+              >
+                {blog.thumbnail && (
+                  <img
+                    src={blog.thumbnail}
+                    alt={blog.title}
+                    className="h-24 w-full object-cover"
+                  />
+                )}
+
+                <div className="p-3">
+                  <p className="text-xs font-semibold text-white">
+                    {blog.title}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-400">
+                    {blog.content}
+                  </p>
+
+                  {blog.slug && (
+                    <a
+                      href={`#blog`}
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400"
+                    >
+                      Read article
+                      <ExternalLink size={11} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "testimonials") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid gap-2">
+            {message.data?.map((testimonial) => (
+              <div
+                key={testimonial.id}
+                className="rounded-xl border border-white/5 bg-white/[0.03] p-3"
+              >
+                <div className="mb-2 flex items-center gap-1 text-yellow-400">
+                  {Array.from({
+                    length: Math.min(Math.max(testimonial.rating || 5, 1), 5),
+                  }).map((_, index) => (
+                    <span key={index}>★</span>
+                  ))}
+                </div>
+
+                <p className="text-[11px] leading-5 text-slate-300">
+                  “{testimonial.review}”
+                </p>
+
+                <p className="mt-2 text-xs font-semibold text-white">
+                  {testimonial.clientName}
+                </p>
+
+                <p className="text-[10px] text-slate-500">
+                  {[testimonial.position, testimonial.company]
+                    .filter(Boolean)
+                    .join(" at ")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "contact") {
+      const contact = message.data || {};
+
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="grid gap-2">
+            {contact.email && (
+              <a
+                href={`mailto:${contact.email}`}
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-xs text-slate-300 transition hover:border-emerald-500/20"
+              >
+                <Mail size={15} className="text-emerald-400" />
+                {contact.email}
+              </a>
+            )}
+
+            {contact.phone && (
+              <a
+                href={`tel:${contact.phone}`}
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-xs text-slate-300 transition hover:border-emerald-500/20"
+              >
+                <Phone size={15} className="text-emerald-400" />
+                {contact.phone}
+              </a>
+            )}
+
+            {contact.linkedinUrl && (
+              <a
+                href={contact.linkedinUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-xs text-slate-300 transition hover:border-emerald-500/20"
+              >
+                <Linkedin size={15} className="text-emerald-400" />
+                LinkedIn
+              </a>
+            )}
+
+            {contact.githubUrl && (
+              <a
+                href={contact.githubUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-xs text-slate-300 transition hover:border-emerald-500/20"
+              >
+                <Github size={15} className="text-emerald-400" />
+                GitHub
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "resume") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <a
+            href={message.data?.resumeUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
+          >
+            <Download size={15} />
+            View Resume
+          </a>
+        </div>
+      );
+    }
+
+    return <p>{message.text}</p>;
   };
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-6 py-4 font-bold text-slate-950 shadow-xl transition-all duration-300 hover:scale-105"
+        className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-5 py-3.5 font-bold text-slate-950 shadow-xl transition-all duration-300 hover:scale-105 sm:px-6 sm:py-4"
+        aria-label="Open portfolio assistant"
       >
-        <Sparkles size={20} className="animate-pulse text-slate-950" />
-        <span>Ask AI</span>
+        <Sparkles size={20} className="animate-pulse" />
+        <span className="hidden sm:inline">Ask AI</span>
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-[200] flex h-[550px] w-[92vw] max-w-md flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 text-white shadow-2xl backdrop-blur-xl">
-          <div className="flex items-center justify-between border-b border-white/5 bg-slate-900/60 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+        <div className="fixed inset-x-3 bottom-20 z-[200] flex h-[min(680px,calc(100vh-6rem))] flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 text-white shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-24 sm:right-6 sm:w-[430px]">
+          <div className="flex items-center justify-between border-b border-white/5 bg-slate-900/70 px-4 py-4 sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10">
                 <Terminal className="text-emerald-400" size={18} />
               </div>
 
-              <div>
-                <h3 className="text-sm font-bold tracking-tight">
-                  Portfolio AI Assistant
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-bold">
+                  Portfolio Assistant
                 </h3>
+
                 <p className="flex items-center gap-1 text-xs text-slate-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                  Portfolio context loaded
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isLoadingContext
+                        ? "animate-pulse bg-yellow-400"
+                        : "bg-emerald-500"
+                    }`}
+                  />
+                  {isLoadingContext
+                    ? "Loading portfolio context..."
+                    : "Portfolio context ready"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button
-                onClick={clearChatLogs}
-                title="Clear Chat"
-                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-rose-400"
+                type="button"
+                onClick={clearChat}
+                title="Clear chat"
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-white/5 hover:text-rose-400"
               >
                 <Trash2 size={16} />
               </button>
 
               <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+                title="Close assistant"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto border-b border-white/5 bg-slate-900/20 px-5 py-2.5">
-            {[
-              { label: "📁 Projects", query: "Show me your portfolio projects" },
-              { label: "⚡ Tech Stack", query: "What is your tech stack?" },
-              { label: "💼 Services", query: "What services do you offer?" },
-              { label: "📌 Experience", query: "Show your experience" },
-            ].map((prompt) => (
+          <div className="flex gap-2 overflow-x-auto border-b border-white/5 bg-slate-900/30 px-4 py-2.5">
+            {quickPrompts.map((prompt) => (
               <button
                 key={prompt.label}
-                disabled={isTyping}
+                type="button"
+                disabled={isTyping || isLoadingContext}
                 onClick={() => handleMessageSubmit(prompt.query)}
-                className="whitespace-nowrap rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:border-emerald-500/20 hover:bg-emerald-500/5 hover:text-emerald-400 disabled:opacity-30"
+                className="whitespace-nowrap rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs text-slate-400 transition hover:border-emerald-500/20 hover:bg-emerald-500/5 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {prompt.label}
               </button>
             ))}
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto p-5">
-            {messages.map((msg, index) => (
+          <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            {messages.map((message, index) => (
               <div
-                key={index}
-                className={`flex max-w-[88%] items-start gap-2.5 ${
-                  msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
+                key={`${message.sender}-${index}`}
+                className={`flex max-w-[92%] items-start gap-2.5 ${
+                  message.sender === "user"
+                    ? "ml-auto flex-row-reverse"
+                    : "mr-auto"
                 }`}
               >
-                {msg.sender === "bot" && (
-                  <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900 text-emerald-400">
-                    <Cpu size={11} />
+                {message.sender === "bot" && (
+                  <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900 text-emerald-400">
+                    <Cpu size={12} />
                   </div>
                 )}
 
-                <div className="w-full space-y-2">
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      msg.sender === "user"
-                        ? "rounded-tr-none bg-gradient-to-r from-emerald-500 to-teal-500 font-semibold text-slate-950"
-                        : "rounded-tl-none border border-white/5 bg-white/[0.03] text-slate-200"
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-
-                  {msg.sender === "bot" && msg.type === "tech" && (
-                    <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-                      {msg.data?.map((tech) => (
-                        <span
-                          key={tech}
-                          className="rounded-md border border-emerald-500/10 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {msg.sender === "bot" && msg.type === "services" && (
-                    <div className="grid gap-1.5 pt-1 pl-1">
-                      {msg.data?.map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-xs text-slate-300"
-                        >
-                          <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {msg.sender === "bot" && msg.type === "projects_list" && (
-                    <div className="grid max-h-48 gap-2 overflow-y-auto pt-1 pl-1">
-                      {msg.data?.map((proj) => (
-                        <div
-                          key={proj.id || proj.title}
-                          onClick={() =>
-                            handleMessageSubmit(`Tell me about ${proj.title}`)
-                          }
-                          className="group flex cursor-pointer items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-2.5 transition-colors hover:bg-white/5"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Layers
-                              size={14}
-                              className="text-emerald-400 group-hover:text-emerald-300"
-                            />
-                            <span className="text-xs font-medium text-slate-300 group-hover:text-white">
-                              {proj.title}
-                            </span>
-                          </div>
-
-                          <span className="text-[10px] text-slate-500 transition-colors group-hover:text-emerald-400">
-                            Inspect →
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {msg.sender === "bot" && msg.type === "project_single" && (
-                    <div className="space-y-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs">
-                      <p className="text-slate-400">
-                        <strong className="text-white">Overview:</strong>{" "}
-                        {msg.data.description}
-                      </p>
-
-                      {msg.data.longDescription && (
-                        <p className="text-slate-400">
-                          <strong className="text-white">Details:</strong>{" "}
-                          {msg.data.longDescription}
-                        </p>
-                      )}
-
-                      <p className="text-slate-400">
-                        <strong className="text-emerald-400">Stack:</strong>{" "}
-                        {msg.data.techStack}
-                      </p>
-                    </div>
-                  )}
+                <div
+                  className={`min-w-0 rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    message.sender === "user"
+                      ? "rounded-tr-none bg-gradient-to-r from-emerald-500 to-teal-500 font-semibold text-slate-950"
+                      : "w-full rounded-tl-none border border-white/5 bg-white/[0.03] text-slate-200"
+                  }`}
+                >
+                  {message.sender === "bot"
+                    ? renderBotContent(message)
+                    : message.text}
                 </div>
               </div>
             ))}
 
             {isTyping && (
               <div className="mr-auto flex max-w-[85%] items-center gap-2.5">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900 text-emerald-400">
-                  <Cpu size={11} className="animate-spin" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-slate-900 text-emerald-400">
+                  <Cpu size={12} className="animate-spin" />
                 </div>
 
-                <div className="flex items-center gap-1 rounded-2xl rounded-tl-none border border-white/5 bg-white/[0.02] px-4 py-2.5">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400" />
+                <div className="flex items-center gap-1 rounded-2xl rounded-tl-none border border-white/5 bg-white/[0.03] px-4 py-3">
+                  {[0, 1, 2].map((item) => (
+                    <span
+                      key={item}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-400"
+                      style={{ animationDelay: `${item * 120}ms` }}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -532,30 +1031,32 @@ const AIAssistant = () => {
           </div>
 
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
+            onSubmit={(event) => {
+              event.preventDefault();
               handleMessageSubmit(input);
-              setInput("");
             }}
-            className="flex gap-2 border-t border-white/5 bg-slate-900/40 p-4"
+            className="flex gap-2 border-t border-white/5 bg-slate-900/50 p-3 sm:p-4"
           >
             <input
               type="text"
               disabled={isTyping}
               placeholder={
-                isTyping ? "Assistant is thinking..." : "Ask about portfolio..."
+                isTyping
+                  ? "Assistant is preparing a response..."
+                  : "Ask about the portfolio..."
               }
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-emerald-500/30 disabled:opacity-50"
+              onChange={(event) => setInput(event.target.value)}
+              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-500/40 disabled:opacity-50"
             />
 
             <button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="rounded-xl bg-emerald-500 px-4 text-slate-950 transition-all hover:bg-emerald-400 disabled:opacity-20"
+              className="rounded-xl bg-emerald-500 px-4 text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Send message"
             >
-              <Send size={14} />
+              <Send size={16} />
             </button>
           </form>
         </div>
