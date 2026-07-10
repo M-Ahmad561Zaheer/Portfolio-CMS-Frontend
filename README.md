@@ -1,16 +1,58 @@
-# React + Vite
+# Portfolio CMS Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern, responsive developer portfolio frontend built with React, Vite, Tailwind CSS, and Axios.  
+This frontend connects with a .NET Web API backend and includes a public portfolio website, admin dashboard, CMS features, contact form, and AI portfolio assistant.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Modern responsive portfolio UI
+- Light and dark mode support
+- Admin login interface
+- Protected admin routes
+- Projects section connected with backend API
+- Blogs section connected with backend API
+- Testimonials section connected with backend API
+- Experience timeline connected with backend API
+- Skills and services connected with backend API
+- Contact form integration
+- AI portfolio assistant
+- Resume download support
+- Vercel-ready configuration
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React
+- Vite
+- Tailwind CSS
+- React Router DOM
+- Axios
+- Lucide React
+- Framer Motion
 
-## Expanding the Oxlint configuration
+## Installation
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npm install
+
+
+Backend
+
+This frontend is designed to work with a .NET Web API backend that provides APIs for:
+
+Authentication
+Profile settings
+Projects
+Blogs
+Testimonials
+Experiences
+Skills
+Services
+Contact messages
+Resume upload
+Author
+
+Ahmad Zaheer
+
+License
+
+This project is for personal portfolio and learning purposes.
