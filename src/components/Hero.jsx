@@ -126,7 +126,7 @@ const Hero = () => {
                 focus: "Scalable Web Apps"
               };`}
             </pre>
-          </div>
+          </div> 
         </motion.div>
       </div>
     </section>
