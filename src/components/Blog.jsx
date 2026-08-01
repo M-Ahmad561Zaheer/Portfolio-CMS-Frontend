@@ -5,8 +5,12 @@ const Blog = () => {
   const [posts, setPosts] = useState([]);
 
   const fetchBlogs = async () => {
-    const res = await api.get("/Blogs");
-    setPosts(res.data);
+    try {
+      const res = await api.get("/Blogs");
+      setPosts(res.data);
+    } catch (error) {
+      console.error("Error fetching blogs:", error);
+    }
   };
 
   useEffect(() => {
@@ -14,53 +18,54 @@ const Blog = () => {
   }, []);
 
   return (
-    <section id="blog" className="px-6 py-24">
+    <section id="blog" className="px-6 py-24 bg-slate-950">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-14 text-center">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-emerald-500 dark:text-emerald-400">
+        <div className="mb-20 text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.5em] text-emerald-400">
             Blog
           </p>
 
-          <h2 className="text-3xl font-bold text-slate-950 dark:text-white md:text-5xl">
+          <h2 className="text-4xl font-bold text-white md:text-5xl">
             Latest Articles
           </h2>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-3">
           {posts.map((post) => (
             <article
               key={post.id}
-              className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition hover:border-emerald-400 dark:border-white/10 dark:bg-white/5"
+              className="rounded-[2rem] border border-white/5 bg-[#11131F] p-9 transition-all duration-300 hover:border-emerald-400/50 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/5"
             >
               {post.thumbnail && (
                 <img
                   src={post.thumbnail}
                   alt={post.title}
-                  className="mb-5 h-40 w-full rounded-2xl object-cover"
+                  className="mb-6 h-44 w-full rounded-3xl object-cover"
                 />
               )}
 
-              <p className="mb-3 text-sm text-emerald-500 dark:text-emerald-400">
-                {new Date(post.createdAt).toLocaleDateString()}
+              <p className="mb-4 text-sm font-medium text-emerald-400">
+                {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </p>
 
-              <h3 className="mb-4 text-xl font-bold text-slate-950 dark:text-white">
+              <h3 className="mb-5 text-2xl font-bold leading-tight text-white">
                 {post.title}
               </h3>
 
-              <p className="mb-6 line-clamp-3 text-slate-600 dark:text-slate-400">
+              <p className="mb-8 line-clamp-3 text-slate-400 leading-relaxed">
                 {post.content}
               </p>
 
-              <button className="font-semibold text-emerald-500 dark:text-emerald-400">
-                Read More →
+              <button className="group flex items-center gap-2 font-semibold text-emerald-400 transition hover:text-emerald-300">
+                Read More
+                <span className="transition-transform group-hover:translate-x-1">→</span>
               </button>
             </article>
           ))}
         </div>
 
         {posts.length === 0 && (
-          <p className="text-center text-slate-600 dark:text-slate-400">
+          <p className="text-center text-slate-400">
             No blog posts available.
           </p>
         )}
