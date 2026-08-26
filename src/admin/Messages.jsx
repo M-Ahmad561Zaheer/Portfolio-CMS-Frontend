@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { Mail, Reply, CheckCircle, Loader2, Sparkles, MessageSquare, Search, AlertCircle, Calendar, ArrowRight } from "lucide-react";
+import { Reply, MessageSquare } from "lucide-react";
 import api from "../api/api";
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [replyingId, setReplyingId] = useState(null);
   const [replyText, setReplyText] = useState("");
-  const [status, setStatus] = useState("");
+  const [, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
 
@@ -22,7 +22,7 @@ const Messages = () => {
       setLoading(true);
       const res = await api.get("/Contact", getHeadersConfig());
       setMessages(res.data || []);
-    } catch (err) {
+    } catch {
       console.error(err);
       setStatus("Failed to load messages.");
     } finally {
@@ -43,7 +43,7 @@ const Messages = () => {
       setReplyingId(null);
       setReplyText("");
       setTimeout(() => setStatus(""), 4000);
-    } catch (err) {
+    } catch {
       setStatus("Failed to send reply.");
     } finally {
       setIsSubmitting(false);

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BriefcaseBusiness,
   Cpu,
   Download,
   ExternalLink,
@@ -8,7 +7,6 @@ import {
   Layers,
   Linkedin,
   Mail,
-  MessageSquareQuote,
   Phone,
   Send,
   Sparkles,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Edit, Trash2, X, Star, Users, Image, Link, Sparkles, Loader2, PlusCircle, AlertCircle, Eye, Quote } from "lucide-react";
+import { Edit, Trash2, X, Star, Users, Link, Sparkles, Loader2, PlusCircle, AlertCircle, Eye, Quote } from "lucide-react";
 import api from "../api/api";
 
 const emptyForm = {

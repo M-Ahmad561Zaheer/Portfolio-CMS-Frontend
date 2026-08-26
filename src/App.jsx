@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // Client Core Viewports
 import Home from "./pages/Home";
+import ProjectDetail from "./pages/ProjectDetail";
 
 // Administrative Cluster Engine Nodes
 import AdminLogin from "./admin/AdminLogin";
@@ -55,6 +56,7 @@ function App() {
             path="/"
             element={<Home darkMode={darkMode} setDarkMode={setDarkMode} />}
           />
+          <Route path="/projects/:projectId" element={<ProjectDetail />} />
 
           {/* Secure Handshake Login Form Gateway */}
           <Route path="/admin/login" element={<AdminLogin />} />

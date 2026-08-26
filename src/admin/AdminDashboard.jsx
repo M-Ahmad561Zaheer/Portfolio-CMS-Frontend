@@ -5,13 +5,9 @@ import {
   ShieldCheck,
   MessageSquareQuote,
   Newspaper,
-  Plus,
-  Eye,
-  Clock,
   Code2,
   Settings,
   BriefcaseBusiness,
-  Activity,
   ArrowUpRight,
   AlertCircle,
   Sparkles,
@@ -23,7 +19,6 @@ import {
   Layers,
   Database,
   RefreshCw,
-  Zap,
   Trash2,
   CheckSquare
 } from "lucide-react";
