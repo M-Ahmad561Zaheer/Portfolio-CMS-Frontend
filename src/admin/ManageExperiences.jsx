@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Edit, Loader2, Save, Trash2, X } from "lucide-react";
 import api from "../api/api";
+import getAdminCollection from "../api/getAdminCollection";
 
 const blank={title:"",company:"",employmentType:"",location:"",startDate:"",endDate:"",isCurrent:false,description:"",technologies:"",displayOrder:1,visible:true};
 export default function ManageExperiences(){
  const [items,setItems]=useState([]);const [form,setForm]=useState(blank);const [editing,setEditing]=useState(null);const [busy,setBusy]=useState(false);const [status,setStatus]=useState("");
- const load=()=>api.get("/Experiences/admin").then(({data})=>setItems(data||[])).catch(()=>setStatus("Could not load experience."));
- useEffect(load,[]);
+ const load=useCallback(async()=>{try{const {data,compatibilityMode}=await getAdminCollection("Experiences");setItems(Array.isArray(data)?data:[]);if(compatibilityMode)setStatus("Backend update pending; showing public experience for now.");}catch{setStatus("Could not load experience.");}},[]);
+ useEffect(()=>{void load();},[load]);
  const save=async e=>{e.preventDefault();setBusy(true);try{const payload={...form,displayOrder:Number(form.displayOrder)||1,endDate:form.isCurrent?"":form.endDate};if(editing){await api.put(`/Experiences/${editing}`,payload);}else{await api.post("/Experiences",payload);}setForm(blank);setEditing(null);setStatus("Experience saved successfully.");await load();}catch{setStatus("Could not save experience.");}finally{setBusy(false)}};
  const edit=item=>{setEditing(item.id);setForm({...blank,...item});window.scrollTo({top:0,behavior:"smooth"})};
  const remove=async id=>{if(!window.confirm("Delete this experience permanently?"))return;await api.delete(`/Experiences/${id}`);await load()};

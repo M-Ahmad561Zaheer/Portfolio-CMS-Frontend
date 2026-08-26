@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Edit, Loader2, Save, Trash2, X } from "lucide-react";
 import api from "../api/api";
+import getAdminCollection from "../api/getAdminCollection";
 
 const blank={category:"",name:"",iconUrl:"",proficiency:"",note:"",displayOrder:1,visible:true,featured:false};
 export default function ManageSkills(){
   const [items,setItems]=useState([]);const [form,setForm]=useState(blank);const [editing,setEditing]=useState(null);const [busy,setBusy]=useState(false);const [status,setStatus]=useState("");
-  const load=()=>api.get("/Skills/admin").then(({data})=>setItems(data||[])).catch(()=>setStatus("Could not load skills."));
-  useEffect(load,[]);
+  const load=useCallback(async()=>{try{const {data,compatibilityMode}=await getAdminCollection("Skills");setItems(Array.isArray(data)?data:[]);if(compatibilityMode)setStatus("Backend update pending; showing public skills for now.");}catch{setStatus("Could not load skills.");}},[]);
+  useEffect(()=>{void load();},[load]);
   const save=async(e)=>{e.preventDefault();setBusy(true);try{const payload={...form,displayOrder:Number(form.displayOrder)||1};if(editing){await api.put(`/Skills/${editing}`,payload);}else{await api.post("/Skills",payload);}setForm(blank);setEditing(null);setStatus("Skill saved successfully.");await load();}catch{setStatus("Could not save skill.");}finally{setBusy(false)}};
   const edit=item=>{setEditing(item.id);setForm({...blank,...item});window.scrollTo({top:0,behavior:"smooth"})};
   const remove=async id=>{if(!window.confirm("Delete this skill permanently?"))return;await api.delete(`/Skills/${id}`);await load()};

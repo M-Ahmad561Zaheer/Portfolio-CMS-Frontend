@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Edit, Loader2, Save, Trash2, X } from "lucide-react";
 import api from "../api/api";
+import getAdminCollection from "../api/getAdminCollection";
 
 const blank={title:"",slug:"",excerpt:"",content:"",category:"",thumbnail:"",readingTime:0,isPublished:false,featured:false,publishedAt:null};
 const slugify=value=>value.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,"").replace(/\s+/g,"-");
 export default function ManageBlogs(){
  const [items,setItems]=useState([]);const [form,setForm]=useState(blank);const [editing,setEditing]=useState(null);const [busy,setBusy]=useState(false);const [status,setStatus]=useState("");
- const load=()=>api.get("/Blogs/admin").then(({data})=>setItems(data||[])).catch(()=>setStatus("Could not load articles."));
- useEffect(load,[]);
+ const load=useCallback(async()=>{try{const {data,compatibilityMode}=await getAdminCollection("Blogs");setItems(Array.isArray(data)?data:[]);if(compatibilityMode)setStatus("Backend update pending; showing published articles for now.");}catch{setStatus("Could not load articles.");}},[]);
+ useEffect(()=>{void load();},[load]);
  const save=async e=>{e.preventDefault();setBusy(true);try{const payload={...form,readingTime:Number(form.readingTime)||0};if(editing){await api.put(`/Blogs/${editing}`,payload);}else{await api.post("/Blogs",payload);}setForm(blank);setEditing(null);setStatus("Article saved successfully.");await load();}catch{setStatus("Could not save article.");}finally{setBusy(false)}};
  const edit=item=>{setEditing(item.id);setForm({...blank,...item});window.scrollTo({top:0,behavior:"smooth"})};
  const remove=async id=>{if(!window.confirm("Delete this article permanently?"))return;await api.delete(`/Blogs/${id}`);await load()};
