@@ -1,47 +1,43 @@
-import Navbar from "../components/Navbar";
-import Hero from "../components/Hero";
-import About from "../components/About";
-import Skills from "../components/Skills";
-import Services from "../components/Services";
-import Projects from "../components/Projects";
-import Contact from "../components/Contact";
-import Footer from "../components/Footer";
-import Timeline from "../components/Timeline";
-import Stats from "../components/Stats";
-import Blog from "../components/Blog";
-import Testimonials from "../components/Testimonials";
-import AIAssistant from "../components/AIAssistant";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Code2, Database, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Play, X } from "lucide-react";
+import api from "../api/api";
 
-const Home = ({ darkMode, setDarkMode }) => {
-  return (
-    <main className="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
-      <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
+const safe = (value) => (Array.isArray(value) ? value : []);
+const section = "mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28";
+const isOn = (profile, key) => profile?.[key] !== false;
+const validUrl = (value) => value && value !== "#" ? value : null;
+const navLinks = ["home", "about", "skills", "projects", "experience", "blog", "contact"];
+const spotifyEmbed = (url) => { try { const parsed = new URL(url); if (!parsed.hostname.includes("spotify.com")) return null; return parsed.pathname.startsWith("/embed/") ? parsed.toString() : `https://open.spotify.com/embed${parsed.pathname}`; } catch { return null; } };
 
-        <Hero />
+function Header({ profile }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState("home");
+  useEffect(() => { const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && setActive(entry.target.id)), { rootMargin: "-35% 0px -55%" }); navLinks.forEach((id) => { const el = document.getElementById(id); if (el) observer.observe(el); }); return () => observer.disconnect(); }, []);
+  return <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-[#fbfcfa]/90 backdrop-blur-xl"><div className="mx-auto flex h-17 max-w-6xl items-center justify-between px-5 sm:px-8"><a href="#home" className="text-lg font-extrabold tracking-tight text-slate-900">Ahmad<span className="text-emerald-600">.dev</span></a><nav className="hidden items-center gap-6 lg:flex" aria-label="Primary navigation">{navLinks.map((item) => <a key={item} href={`#${item}`} className={`text-sm capitalize transition ${active === item ? "text-emerald-700" : "text-slate-600 hover:text-slate-950"}`}>{item}</a>)}</nav><div className="hidden items-center gap-3 lg:flex">{validUrl(profile?.githubUrl) && <a className="icon-link" href={profile.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub"><Github size={18}/></a>}{validUrl(profile?.linkedinUrl) && <a className="icon-link" href={profile.linkedinUrl} target="_blank" rel="noreferrer" aria-label="LinkedIn"><Linkedin size={18}/></a>}{validUrl(profile?.resumeUrl) && <a className="button button-small" href={profile.resumeUrl} target="_blank" rel="noreferrer">Download CV</a>}</div><button className="icon-link lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle navigation">{open ? <X/> : <Menu/>}</button></div>{open && <nav className="border-t border-slate-200 bg-white px-5 py-4 lg:hidden">{navLinks.map((item) => <a key={item} href={`#${item}`} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 capitalize text-slate-700 hover:bg-emerald-50">{item}</a>)}</nav>}</header>;
+}
 
-        <Stats />
+function Music({ profile }) { const embed = spotifyEmbed(profile.musicUrl); if (!profile.musicEnabled || !embed) return null; return <div className="music-card"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl bg-emerald-100 text-emerald-700">{profile.musicCoverUrl ? <img src={profile.musicCoverUrl} alt="Music cover" className="h-full w-full object-cover"/> : <Music2/>}</div><div><p className="eyebrow">{profile.musicLabel || "Focus Mode"}</p><h3 className="font-bold text-slate-900">{profile.musicHeading || "While You Browse"} 🎧</h3><p className="text-sm text-slate-500">{profile.musicDescription || "Lo-fi / Coding Vibes"}</p></div></div><iframe className="mt-5 w-full rounded-xl" src={embed} height="152" title="Spotify music player" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" /></div>; }
 
-        <About />
-
-        <Skills />
-
-        <Services />
-
-        <Projects />
-
-        <Timeline />
-
-        <Testimonials />
-
-        <Blog />
-
-        <Contact />
-
-        <Footer />
-
-        <AIAssistant />
-    </main>
-  );
-};
-
-export default Home;
+export default function Home() {
+  const [data, setData] = useState({ profile: null, projects: [], skills: [], experiences: [], blogs: [] });
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [formState, setFormState] = useState({ busy: false, message: "", error: false });
+  useEffect(() => { Promise.allSettled([api.get("/Profile"), api.get("/Projects"), api.get("/Skills"), api.get("/Experiences"), api.get("/Blogs")]).then(([profile, projects, skills, experiences, blogs]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data) })).finally(() => setLoading(false)); }, []);
+  const { profile, projects, skills, experiences, blogs } = data;
+  const skillGroups = useMemo(() => skills.reduce((all, skill) => { (all[skill.category || "Other"] ||= []).push(skill); return all; }, {}), [skills]);
+  const submit = async (event) => { event.preventDefault(); if (formState.busy) return; setFormState({ busy: true, message: "", error: false }); try { await api.post("/Contact", form); setForm({ name: "", email: "", message: "" }); setFormState({ busy: false, message: "Thanks — your message has been sent.", error: false }); } catch (error) { setFormState({ busy: false, message: error.response?.data?.message || "Message could not be sent. Please try again.", error: true }); } };
+  if (loading) return <main className="grid min-h-screen place-items-center bg-[#fbfcfa]"><div className="text-sm font-semibold text-emerald-700">Loading portfolio…</div></main>;
+  return <main className="min-h-screen overflow-hidden bg-[#fbfcfa] text-slate-800"><Header profile={profile}/>
+    <section id="home" className={`${section} grid min-h-[82vh] items-center gap-14 lg:grid-cols-[1.05fr_.95fr]`}><div><p className="eyebrow">Hi, I&apos;m</p><h1 className="mt-4 text-5xl font-extrabold leading-[1.05] tracking-[-.045em] text-slate-950 sm:text-6xl lg:text-7xl">{profile?.fullName || "Ahmad Zaheer"}</h1><h2 className="mt-5 text-2xl font-semibold text-emerald-700 sm:text-3xl">{profile?.role || ".NET & React Developer"}</h2><p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">{profile?.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="mt-9 flex flex-wrap gap-3"><a className="button" href="#projects">View My Work <ArrowRight size={17}/></a><a className="button button-outline" href="#contact">Let&apos;s Connect</a></div>{(projects.length || skills.length) ? <div className="mt-12 flex gap-10 border-t border-slate-200 pt-7">{projects.length > 0 && <div><strong className="text-2xl text-slate-950">{projects.length}</strong><span className="block text-sm text-slate-500">Projects built</span></div>}{skills.length > 0 && <div><strong className="text-2xl text-slate-950">{skills.length}</strong><span className="block text-sm text-slate-500">Technologies</span></div>}</div> : null}</div><div className="editor-card" aria-label="Developer code card"><div className="editor-top"><span/><span/><span/><b>Developer.cs</b></div><pre><code><i>class</i> Developer{"\n"}{"{"}{"\n"}  name = <em>&quot;{profile?.fullName || "Ahmad Zaheer"}&quot;</em>;{"\n"}  role = <em>&quot;{profile?.role || ".NET & React Developer"}&quot;</em>;{"\n\n"}  focus = [{"\n"}    <em>&quot;Clean Code&quot;</em>, <em>&quot;APIs&quot;</em>,{"\n"}    <em>&quot;UI/UX&quot;</em>, <em>&quot;Performance&quot;</em>{"\n"}  ];{"\n\n"}  Build() ={">"} <em>&quot;Learning. Building. Improving. 🚀&quot;</em>;{"\n"}{"}"}</code></pre></div></section>
+    {isOn(profile, "aboutEnabled") && <section id="about" className="border-y border-slate-200 bg-white"><div className={`${section} grid gap-12 lg:grid-cols-2`}><div><p className="eyebrow">About</p><h2 className="section-title">Engineering Philosophy</h2><p className="section-copy">{profile?.about || profile?.shortBio || "I enjoy turning real problems into practical, maintainable software and improving with every project."}</p></div><div className="space-y-3">{["Solve real problems with practical solutions", "Write clean, testable and maintainable code", "Keep learning and ship consistently"].map((text, i) => <div className="principle" key={text}><span>0{i + 1}</span><p>{text}</p></div>)}</div></div></section>}
+    {isOn(profile, "skillsEnabled") && skills.length > 0 && <section id="skills" className={section}><p className="eyebrow">Technical Expertise</p><h2 className="section-title">Tools I use to build.</h2><div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{Object.entries(skillGroups).map(([category, items]) => <div className="soft-card" key={category}><h3>{category}</h3><div className="mt-5 flex flex-wrap gap-2">{items.map((skill) => <span className="skill" key={skill.id}>{skill.name}</span>)}</div></div>)}</div></section>}
+    {isOn(profile, "projectsEnabled") && projects.length > 0 && <section id="projects" className="bg-[#f1f7f3]"><div className={section}><p className="eyebrow">Portfolio</p><h2 className="section-title">Selected Engineering Work</h2><div className="mt-10 grid gap-7 md:grid-cols-2">{projects.map((project) => <article className="project-card" key={project.id}>{project.imageUrl ? <img src={project.imageUrl} alt={`${project.title} preview`} loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }}/> : <div className="project-placeholder"><Code2/></div>}<div className="p-7"><div className="flex items-start justify-between gap-3"><h3>{project.title}</h3><div className="flex gap-2">{validUrl(project.githubUrl) && <a href={project.githubUrl} target="_blank" rel="noreferrer" aria-label={`${project.title} GitHub`}><Github/></a>}{validUrl(project.liveUrl) && <a href={project.liveUrl} target="_blank" rel="noreferrer" aria-label={`${project.title} live demo`}><ExternalLink/></a>}</div></div><p>{project.description}</p><div className="mt-5 flex flex-wrap gap-2">{(project.techStack || "").split(/[,|]/).filter(Boolean).map((tech) => <span className="tag" key={tech}>{tech.trim()}</span>)}</div></div></article>)}</div><Music profile={profile}/></div></section>}
+    {isOn(profile, "experienceEnabled") && experiences.length > 0 && <section id="experience" className={section}><p className="eyebrow">Journey</p><h2 className="section-title">Experience & Learning Journey</h2><div className="mt-12 max-w-4xl border-l border-emerald-200">{experiences.map((item) => <article className="timeline-item" key={item.id}><span/><p className="text-sm font-semibold text-emerald-700">{item.startDate} — {item.endDate || "Present"}</p><h3>{item.title}</h3><p className="font-medium text-slate-500">{item.company}</p><p className="mt-3 leading-7 text-slate-600">{item.description}</p></article>)}</div></section>}
+    {isOn(profile, "architectureEnabled") && <section id="architecture" className="border-y border-slate-200 bg-white"><div className={section}><p className="eyebrow">How I think</p><h2 className="section-title">{profile?.architectureTitle || "System Design & Architecture"}</h2><p className="section-copy">{profile?.architectureDescription || "Designing scalable and maintainable applications with clear boundaries and practical technology choices."}</p><div className="architecture"><div><Code2/><b>Client</b><small>Web / Mobile</small></div><ArrowRight/><div><Play/><b>API / Application</b><small>.NET Core</small></div><ArrowRight/><div><Database/><b>Database</b><small>Relational data</small></div></div></div></section>}
+    {isOn(profile, "githubEnabled") && validUrl(profile?.githubUrl) && <section id="github" className={section}><div className="github-panel"><Github size={36}/><div><p className="eyebrow">Open source & progress</p><h2>GitHub Activity</h2><p>Explore real repositories, recent experiments and the code behind my projects.</p></div><a className="button" href={profile.githubUrl} target="_blank" rel="noreferrer">View GitHub <ExternalLink size={16}/></a></div></section>}
+    {isOn(profile, "blogEnabled") && blogs.length > 0 && <section id="blog" className="bg-[#f1f7f3]"><div className={section}><p className="eyebrow">Writing</p><h2 className="section-title">Latest Insights</h2><div className="mt-10 grid gap-6 md:grid-cols-3">{blogs.slice(0, 3).map((post) => <article className="soft-card" key={post.id}>{post.thumbnail && <img src={post.thumbnail} alt="" className="mb-5 aspect-[16/9] w-full rounded-xl object-cover" loading="lazy"/>}<time>{new Date(post.createdAt).toLocaleDateString()}</time><h3 className="mt-3">{post.title}</h3><p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{post.content}</p></article>)}</div></div></section>}
+    {isOn(profile, "contactEnabled") && <section id="contact" className={section}><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><p className="eyebrow">Contact</p><h2 className="section-title">{profile?.contactTitle || "Let's Build Something Great"}</h2><p className="section-copy">{profile?.contactSubtitle || "Have a project, opportunity or idea? I’d be glad to hear about it."}</p><div className="mt-8 space-y-3">{profile?.email && <a className="contact-line" href={`mailto:${profile.email}`}><Mail/> {profile.email}</a>}{profile?.phone && <a className="contact-line" href={`tel:${profile.phone}`}><Phone/> {profile.phone}</a>}{profile?.location && <p className="contact-line"><MapPin/> {profile.location}</p>}</div></div>{profile?.contactFormEnabled !== false && <form className="contact-form" onSubmit={submit}><label>Name<input required minLength="2" maxLength="100" value={form.name} onChange={(e) => setForm({...form, name:e.target.value})}/></label><label>Email<input required type="email" maxLength="160" value={form.email} onChange={(e) => setForm({...form, email:e.target.value})}/></label><label>Message<textarea required minLength="10" maxLength="3000" rows="6" value={form.message} onChange={(e) => setForm({...form, message:e.target.value})}/></label>{formState.message && <p role="status" className={formState.error ? "text-rose-600" : "text-emerald-700"}>{formState.message}</p>}<button className="button" disabled={formState.busy}>{formState.busy ? "Sending…" : "Send Message"}</button></form>}</div></section>}
+    <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:px-8"><p>© {new Date().getFullYear()} {profile?.fullName || "Ahmad Zaheer"}. All rights reserved.</p><p>Built with ❤️ and lots of ☕</p></div></footer>
+  </main>;
+}
