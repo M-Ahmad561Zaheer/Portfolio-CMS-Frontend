@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import api from "../api/api";
+import { notifyProfileUpdated } from "../utils/portfolioUpdates";
 
 const defaults = { fullName:"", role:"", shortBio:"", about:"", email:"", phone:"", location:"", githubUrl:"", linkedinUrl:"", resumeUrl:"", availabilityText:"", aboutEnabled:true, skillsEnabled:true, projectsEnabled:true, experienceEnabled:true, architectureEnabled:true, githubEnabled:true, blogEnabled:true, contactEnabled:true, contactFormEnabled:true, musicEnabled:false, testimonialsEnabled:false, exploringEnabled:true, exploringItems:"", exploringStatus:"Learning", musicHeading:"While You Browse", musicDescription:"Play some lo-fi beats and stay in the zone.", musicLabel:"Focus Mode", musicUrl:"", musicCoverUrl:"", architectureTitle:"System Design & Architecture", architectureDescription:"Designing scalable and maintainable applications.", contactTitle:"Let's Build Something Great", contactSubtitle:"Have a project, opportunity or idea? I'd be glad to hear about it." };
 const fields = [
@@ -12,7 +13,7 @@ const toggles = [["aboutEnabled","About"],["skillsEnabled","Skills"],["projectsE
 export default function ProfileSettings(){
   const [profile,setProfile]=useState(defaults); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [status,setStatus]=useState("");
   useEffect(()=>{api.get("/Profile").then(({data})=>setProfile({...defaults,...data})).catch(()=>setStatus("Could not load settings.")).finally(()=>setLoading(false));},[]);
-  const save=async(e)=>{e.preventDefault();setSaving(true);setStatus("");try{const {data}=await api.put("/Profile",profile);setProfile({...defaults,...data});setStatus("Portfolio settings saved.");}catch{setStatus("Could not save settings.");}finally{setSaving(false);}};
+  const save=async(e)=>{e.preventDefault();setSaving(true);setStatus("");try{const {data}=await api.put("/Profile",profile);setProfile({...defaults,...data});notifyProfileUpdated();setStatus("Portfolio settings saved and published live.");}catch{setStatus("Could not save settings.");}finally{setSaving(false);}};
   if(loading)return <div className="grid min-h-[50vh] place-items-center"><Loader2 className="animate-spin text-emerald-600"/></div>;
   return <div className="mx-auto max-w-5xl space-y-6 text-slate-900 dark:text-slate-100"><div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-600">Portfolio</p><h1 className="mt-2 text-3xl font-bold">General settings</h1><p className="mt-2 text-sm text-slate-500">One source of truth for public identity, links, sections, architecture, contact and music.</p></div>
   {status&&<p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{status}</p>}

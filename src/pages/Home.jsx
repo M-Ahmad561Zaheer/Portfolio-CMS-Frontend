@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BookOpen, Boxes, BriefcaseBusiness, Code2, Database, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Server, Sparkles, X } from "lucide-react";
 import api from "../api/api";
+import { subscribeToProfileUpdates } from "../utils/portfolioUpdates";
 
 const navItems = ["home", "about", "skills", "projects", "experience", "blog", "contact"];
 const container = "mx-auto max-w-7xl px-5 sm:px-8";
@@ -101,11 +102,23 @@ export default function Home() {
   const [showAllArticles, setShowAllArticles] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [formState, setFormState] = useState({ busy: false, message: "", error: false });
+  const refreshProfile = useCallback(() => api.get("/Profile").then(({ data: profile }) => setData((current) => ({ ...current, profile }))).catch(() => {}), []);
   useEffect(() => {
     Promise.allSettled([api.get("/Profile"), api.get("/Projects"), api.get("/Skills"), api.get("/Experiences"), api.get("/Blogs")])
       .then(([profile, projects, skills, experiences, blogs]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data) }))
       .finally(() => setLoading(false));
-  }, []);
+    const unsubscribe = subscribeToProfileUpdates(refreshProfile);
+    const interval = window.setInterval(refreshProfile, 15000);
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshProfile(); };
+    window.addEventListener("focus", refreshProfile);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      unsubscribe();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshProfile);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refreshProfile]);
   const { profile, projects, skills, experiences, blogs } = data;
   const skillGroups = useMemo(() => skills.reduce((groups, skill) => { (groups[skill.category || "Other"] ||= []).push(skill); return groups; }, {}), [skills]);
   const exploring = splitItems(profile.exploringItems);
