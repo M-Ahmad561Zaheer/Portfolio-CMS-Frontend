@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, BookOpen, Boxes, Code2, Database, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Server, Sparkles, X } from "lucide-react";
+import { ArrowRight, BookOpen, Boxes, BriefcaseBusiness, Code2, Database, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Server, Sparkles, X } from "lucide-react";
 import api from "../api/api";
 
 const navItems = ["home", "about", "skills", "projects", "experience", "blog", "contact"];
@@ -36,6 +36,22 @@ function Header({ profile }) {
 function CodeWindow({ profile }) {
   const lines = ["class Developer", "{", `  name = "${profile?.fullName || "Ahmad Zaheer"}";`, `  role = "${profile?.role || ".NET & React Developer"}";`, "", "  focus = [", '    "Clean Code", "APIs",', '    "UI/UX", "Performance"', "  ];", "", '  Build() => "Learning. Building. Improving. 🚀";', "}"];
   return <div className="code-window"><div className="code-toolbar"><div><span/><span/><span/></div><b>Developer.cs</b><small>C#</small></div><ol>{lines.map((line, index) => <li key={index}><code>{line || " "}</code></li>)}</ol></div>;
+}
+
+function HeroStats({ projects, skills, experiences, githubUrl }) {
+  const items = [
+    projects.length > 0 && { icon: Boxes, value: projects.length, label: "Projects built" },
+    skills.length > 0 && { icon: Code2, value: skills.length, label: "Technologies" },
+    experiences.length > 0 && { icon: BriefcaseBusiness, value: experiences.length, label: "Learning milestones" },
+    validUrl(githubUrl) && { icon: Github, value: "Open", label: "GitHub activity", href: githubUrl },
+  ].filter(Boolean);
+
+  if (items.length === 0) return null;
+
+  return <div className="hero-stats" aria-label="Portfolio credibility indicators">{items.map(({ icon: Icon, value, label, href }) => {
+    const content = <><span className="hero-stat-icon"><Icon/></span><span className="hero-stat-copy"><strong>{value}</strong><small>{label}</small></span>{href && <ArrowRight className="hero-stat-arrow"/>}</>;
+    return href ? <a className="hero-stat" href={href} target="_blank" rel="noreferrer" key={label}>{content}</a> : <div className="hero-stat" key={label}>{content}</div>;
+  })}</div>;
 }
 
 function MusicCard({ profile }) {
@@ -88,7 +104,7 @@ export default function Home() {
   if (loading) return <main className="page-loader"><span>Loading portfolio…</span></main>;
   return <main className="portfolio-page"><Header profile={profile}/>
     {/* Testimonials, Services, AI Assistant and duplicate Stats are intentionally not rendered on the public portfolio. Their admin/backend data remains untouched. */}
-    <section id="home" className={`${container} hero`}><div className="hero-copy">{profile.availabilityText && <div className="availability"><span/>{profile.availabilityText}</div>}<p className="kicker">Hi, I&apos;m</p><h1>{profile.fullName || "Ahmad Zaheer"}</h1><h2>{profile.role || ".NET & React Developer"}</h2><p className="hero-intro">{profile.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="hero-actions"><a className="primary-button" href="#projects">View My Work <ArrowRight/></a><a className="secondary-button" href="#contact">Let&apos;s Connect</a></div><div className="hero-stats">{projects.length > 0 && <div><strong>{projects.length}</strong><span>Projects built</span></div>}{skills.length > 0 && <div><strong>{skills.length}</strong><span>Technologies</span></div>}{validUrl(profile.githubUrl) && <div><Github/><span>Active on GitHub</span></div>}</div></div><CodeWindow profile={profile}/></section>
+    <section id="home" className={`${container} hero`}><div className="hero-copy">{profile.availabilityText && <div className="availability"><span/>{profile.availabilityText}</div>}<p className="kicker">Hi, I&apos;m</p><h1>{profile.fullName || "Ahmad Zaheer"}</h1><h2>{profile.role || ".NET & React Developer"}</h2><p className="hero-intro">{profile.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="hero-actions"><a className="primary-button" href="#projects">View My Work <ArrowRight/></a><a className="secondary-button" href="#contact">Let&apos;s Connect</a></div><HeroStats projects={projects} skills={skills} experiences={experiences} githubUrl={profile.githubUrl}/></div><CodeWindow profile={profile}/></section>
 
     <section className="credibility-strip"><div className={`${container} credibility-grid`}>{[[Boxes,"Real Projects","Built end-to-end"],[Code2,"Clean Code","Maintainable solutions"],[Server,"Modern Stack","Practical technologies"],[Sparkles,"Continuous Learning","Improving consistently"]].map(([Icon,title,text]) => <div key={title}><Icon/><span><b>{title}</b><small>{text}</small></span></div>)}</div></section>
 
