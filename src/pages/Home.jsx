@@ -98,7 +98,6 @@ function GitHubActivity({ profile }) {
 
 export default function Home() {
   const [data, setData] = useState({ profile: {}, projects: [], skills: [], experiences: [], blogs: [] });
-  const [loading, setLoading] = useState(true);
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllArticles, setShowAllArticles] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
@@ -106,8 +105,7 @@ export default function Home() {
   const refreshProfile = useCallback(() => api.get("/Profile").then(({ data: profile }) => setData((current) => ({ ...current, profile }))).catch(() => {}), []);
   useEffect(() => {
     Promise.allSettled([api.get("/Profile"), api.get("/Projects"), api.get("/Skills"), api.get("/Experiences"), api.get("/Blogs")])
-      .then(([profile, projects, skills, experiences, blogs]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data) }))
-      .finally(() => setLoading(false));
+      .then(([profile, projects, skills, experiences, blogs]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data) }));
     const unsubscribe = subscribeToProfileUpdates(refreshProfile);
     const interval = window.setInterval(refreshProfile, 15000);
     const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshProfile(); };
@@ -129,7 +127,6 @@ export default function Home() {
     try { await api.post("/Contact", form); setForm({ name: "", email: "", message: "" }); setFormState({ busy: false, message: "Thanks — your message has been sent.", error: false }); }
     catch (error) { setFormState({ busy: false, message: error.response?.data?.message || "Message could not be sent. Please try again.", error: true }); }
   };
-  if (loading) return <main className="page-loader"><span>Loading portfolio…</span></main>;
   return <main className="portfolio-page"><Header profile={profile}/>
     {/* Testimonials, Services, AI Assistant and duplicate Stats are intentionally not rendered on the public portfolio. Their admin/backend data remains untouched. */}
     <section id="home" className={`${container} hero`}><div className="hero-copy">{profile.availabilityText && <div className="availability"><span/>{profile.availabilityText}</div>}<p className="kicker">Hi, I&apos;m</p><h1>{profile.fullName || "Ahmad Zaheer"}</h1><h2>{profile.role || ".NET & React Developer"}</h2><p className="hero-intro">{profile.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="hero-actions"><a className="primary-button" href="#projects">View My Work <ArrowRight/></a><a className="secondary-button" href="#contact">Let&apos;s Connect</a></div><HeroStats projects={projects} skills={skills} experiences={experiences} githubUrl={profile.githubUrl}/></div><CodeWindow profile={profile}/></section>
