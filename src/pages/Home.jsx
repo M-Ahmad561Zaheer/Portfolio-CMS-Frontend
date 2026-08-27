@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BookOpen, Boxes, BriefcaseBusiness, Code2, Database, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Server, Sparkles, X } from "lucide-react";
 import api from "../api/api";
 import { subscribeToProfileUpdates } from "../utils/portfolioUpdates";
+import { RESUME_URL } from "../utils/resume";
 
 const navItems = ["home", "about", "skills", "projects", "experience", "blog", "contact"];
 const container = "mx-auto max-w-7xl px-5 sm:px-8";
@@ -29,9 +30,9 @@ function Header({ profile }) {
   return <header className="site-header"><div className={`${container} flex h-[70px] items-center justify-between`}>
     <a href="#home" className="brand">Ahmad<span>.dev</span></a>
     <nav className="desktop-nav" aria-label="Primary navigation">{links.map((item) => <a key={item} href={`#${item}`} className={active === item ? "active" : ""}>{item}</a>)}</nav>
-    <div className="hidden items-center gap-2 lg:flex">{validUrl(profile?.githubUrl) && <a className="icon-button" href={profile.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub"><Github/></a>}{validUrl(profile?.linkedinUrl) && <a className="icon-button" href={profile.linkedinUrl} target="_blank" rel="noreferrer" aria-label="LinkedIn"><Linkedin/></a>}{validUrl(profile?.resumeUrl) && <a className="primary-button compact" href={profile.resumeUrl} target="_blank" rel="noreferrer">Download CV</a>}</div>
+    <div className="hidden items-center gap-2 lg:flex">{validUrl(profile?.githubUrl) && <a className="icon-button" href={profile.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub"><Github/></a>}{validUrl(profile?.linkedinUrl) && <a className="icon-button" href={profile.linkedinUrl} target="_blank" rel="noreferrer" aria-label="LinkedIn"><Linkedin/></a>}<a className="primary-button compact" href={RESUME_URL} target="_blank" rel="noreferrer">Download CV</a></div>
     <button className="icon-button lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle navigation">{open ? <X/> : <Menu/>}</button>
-  </div>{open && <nav className="mobile-nav" aria-label="Mobile navigation">{links.map((item) => <a key={item} href={`#${item}`} onClick={() => setOpen(false)}>{item}</a>)}<div className="mobile-proof-links">{validUrl(profile?.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile?.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}{validUrl(profile?.resumeUrl) && <a href={profile.resumeUrl} target="_blank" rel="noreferrer"><ExternalLink/>Download CV</a>}</div></nav>}</header>;
+  </div>{open && <nav className="mobile-nav" aria-label="Mobile navigation">{links.map((item) => <a key={item} href={`#${item}`} onClick={() => setOpen(false)}>{item}</a>)}<div className="mobile-proof-links">{validUrl(profile?.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile?.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}<a href={RESUME_URL} target="_blank" rel="noreferrer"><ExternalLink/>Download CV</a></div></nav>}</header>;
 }
 
 function CodeWindow({ profile }) {

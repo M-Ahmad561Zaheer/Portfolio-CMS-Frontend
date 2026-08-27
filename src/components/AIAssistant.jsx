@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import api from "../api/api";
+import { RESUME_URL } from "../utils/resume";
 
 const STORAGE_KEY = "portfolio_ai_chat_v2";
 
@@ -235,18 +236,11 @@ const AIAssistant = () => {
     ]);
 
     if (asksForResume) {
-      if (!profile?.resumeUrl) {
-        return {
-          type: "text",
-          text: "A resume has not been uploaded yet. You can still contact Ahmad through the contact form.",
-        };
-      }
-
       return {
         type: "resume",
         text: "You can view or download Ahmad’s latest resume below.",
         data: {
-          resumeUrl: profile.resumeUrl,
+          resumeUrl: RESUME_URL,
           fullName: profile.fullName || "Ahmad Zaheer",
         },
       };
@@ -500,15 +494,13 @@ const AIAssistant = () => {
       { label: "Experience", query: "Show your experience" },
     ];
 
-    if (profile?.resumeUrl) {
-      prompts.push({
-        label: "Resume",
-        query: "Show me your resume",
-      });
-    }
+    prompts.push({
+      label: "Resume",
+      query: "Show me your resume",
+    });
 
     return prompts;
-  }, [profile]);
+  }, []);
 
   const renderBotContent = (message) => {
     if (message.type === "welcome") {

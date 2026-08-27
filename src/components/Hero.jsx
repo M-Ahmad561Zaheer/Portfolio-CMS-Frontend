@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Mail, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import api from "../api/api";
+import { RESUME_URL } from "../utils/resume";
 
 const Hero = () => {
   const [profile, setProfile] = useState(null);
@@ -97,7 +98,7 @@ const Hero = () => {
               <Mail />
             </a>
 
-            <a href={profile?.resumeUrl || "#"} target="_blank" rel="noreferrer">
+            <a href={RESUME_URL} target="_blank" rel="noreferrer">
               <Download />
             </a>
           </div>
