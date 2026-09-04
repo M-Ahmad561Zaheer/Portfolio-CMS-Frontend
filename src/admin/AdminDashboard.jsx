@@ -28,7 +28,7 @@ import api from "../api/api";
 const AdminDashboard = () => {
   // Primary States
   const [stats, setStats] = useState({
-    projects: 0, messages: 0, admins: 0, blogs: 0, testimonials: 0, experience: 0, skills: 0, services: 0,
+    projects: 0, messages: 0, admins: 0, blogs: 0, testimonials: 0, experience: 0, education: 0, skills: 0, services: 0,
   });
   const [messages, setMessages] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -142,6 +142,7 @@ const AdminDashboard = () => {
     { title: "Testimonials", value: stats.testimonials, icon: <MessageSquareQuote size={18} />, link: "/admin/testimonials", color: "hover:border-emerald-500/30", bg: "bg-emerald-500/10 text-emerald-400" },
     { title: "Admin Nodes", value: stats.admins, icon: <ShieldCheck size={18} />, link: "/admin/profile", color: "hover:border-cyan-500/30", bg: "bg-cyan-500/10 text-cyan-400" },
     { title: "Work Experience", value: stats.experience, icon: <BriefcaseBusiness size={18} />, link: "/admin/experiences", color: "hover:border-indigo-500/30", bg: "bg-indigo-500/10 text-indigo-400" },
+    { title: "Education", value: stats.education ?? 0, icon: <BriefcaseBusiness size={18} />, link: "/admin/educations", color: "hover:border-indigo-500/30", bg: "bg-indigo-500/10 text-indigo-400" },
     { title: "Tech Skills", value: stats.skills, icon: <Code2 size={18} />, link: "/admin/skills", color: "hover:border-pink-500/30", bg: "bg-pink-500/10 text-pink-400" },
     { title: "Core Services", value: stats.services, icon: <Settings size={18} />, link: "/admin/services", color: "hover:border-slate-500/30", bg: "bg-slate-500/10 text-slate-400" },
   ];

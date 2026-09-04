@@ -4,7 +4,7 @@ import api from "../api/api";
 import { subscribeToProfileUpdates } from "../utils/portfolioUpdates";
 import { RESUME_URL } from "../utils/resume";
 
-const navItems = ["home", "about", "skills", "projects", "experience", "blog", "contact"];
+const navItems = ["home", "about", "skills", "projects", "experience", "education", "blog", "contact"];
 const container = "mx-auto max-w-7xl px-5 sm:px-8";
 const isOn = (profile, key) => profile?.[key] !== false;
 const validUrl = (value) => value && value !== "#" ? value : null;
@@ -97,15 +97,15 @@ function GitHubActivity({ profile }) {
 }
 
 export default function Home() {
-  const [data, setData] = useState({ profile: {}, projects: [], skills: [], experiences: [], blogs: [] });
+  const [data, setData] = useState({ profile: {}, projects: [], skills: [], experiences: [], educations: [], blogs: [] });
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllArticles, setShowAllArticles] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [formState, setFormState] = useState({ busy: false, message: "", error: false });
   const refreshProfile = useCallback(() => api.get("/Profile").then(({ data: profile }) => setData((current) => ({ ...current, profile }))).catch(() => {}), []);
   useEffect(() => {
-    Promise.allSettled([api.get("/Profile"), api.get("/Projects"), api.get("/Skills"), api.get("/Experiences"), api.get("/Blogs")])
-      .then(([profile, projects, skills, experiences, blogs]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data) }));
+    Promise.allSettled([api.get("/Profile"), api.get("/Projects"), api.get("/Skills"), api.get("/Experiences"), api.get("/Blogs"), api.get("/Educations")])
+      .then(([profile, projects, skills, experiences, blogs, educations]) => setData({ profile: profile.value?.data || {}, projects: safe(projects.value?.data), skills: safe(skills.value?.data), experiences: safe(experiences.value?.data), blogs: safe(blogs.value?.data), educations: safe(educations.value?.data) }));
     const unsubscribe = subscribeToProfileUpdates(refreshProfile);
     const interval = window.setInterval(refreshProfile, 15000);
     const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshProfile(); };
@@ -118,7 +118,7 @@ export default function Home() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refreshProfile]);
-  const { profile, projects, skills, experiences, blogs } = data;
+  const { profile, projects, skills, experiences, blogs, educations } = data;
   const skillGroups = useMemo(() => skills.reduce((groups, skill) => { (groups[skill.category || "Other"] ||= []).push(skill); return groups; }, {}), [skills]);
   const exploring = splitItems(profile.exploringItems);
   const submit = async (event) => {
@@ -143,6 +143,8 @@ export default function Home() {
     {profile.musicEnabled && spotifyEmbed(profile.musicUrl) && <section className="music-section"><div className={container}><MusicCard profile={profile}/></div></section>}
 
     <GitHubActivity profile={profile}/>
+
+    {isOn(profile,"educationEnabled") && educations.length > 0 && <section id="education" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Education</p><h2>Academic Journey</h2><p>Qualifications and learning that shaped my work.</p></div><div className="timeline">{educations.map(item => <article key={item.id}><span className="timeline-dot"/><time>{[item.startDate, item.isCurrent ? "Present" : item.endDate].filter(Boolean).join(" — ")}</time><h3>{item.degree}</h3><h4>{item.institution}{item.location && ` · ${item.location}`}</h4>{item.grade && <div className="tech-list"><span>Grade / CGPA: {item.grade}</span></div>}{item.description && <p className="whitespace-pre-line">{item.description}</p>}</article>)}</div></div></section>}
 
     {isOn(profile,"experienceEnabled") && experiences.length > 0 && <section id="experience" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Journey</p><h2>Experience & Learning Journey</h2><p>Practical experience, steady growth and lessons carried into every build.</p></div><div className="timeline">{experiences.map((item) => <article key={item.id}><span className="timeline-dot"/><time>{item.startDate} — {item.isCurrent ? "Present" : item.endDate}</time><h3>{item.title}</h3><h4>{item.company}{item.employmentType&&` · ${item.employmentType}`}{item.location&&` · ${item.location}`}</h4><p>{item.description}</p>{item.technologies&&<div className="tech-list">{splitItems(item.technologies).map(tech=><span key={tech}>{tech}</span>)}</div>}</article>)}</div></div></section>}
 

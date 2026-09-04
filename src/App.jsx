@@ -15,6 +15,7 @@ import ProtectedRoute from "./admin/ProtectedRoute";
 import ManageBlogs from "./admin/ManageBlogs";
 import ManageTestimonials from "./admin/ManageTestimonials";
 import ProfileSettings from "./admin/ProfileSettings";
+import ManageEducations from "./admin/ManageEducations";
 import ManageExperiences from "./admin/ManageExperiences";
 import ManageSkills from "./admin/ManageSkills";
 import ManageServices from "./admin/ManageServices";
@@ -80,6 +81,7 @@ function App() {
             <Route path="blogs" element={<ManageBlogs />} />
             <Route path="testimonials" element={<ManageTestimonials />} />
             <Route path="profile" element={<ProfileSettings />} />
+            <Route path="educations" element={<ManageEducations />} />
             <Route path="experiences" element={<ManageExperiences />} />
             <Route path="skills" element={<ManageSkills />} />
             <Route path="services" element={<ManageServices />} />
