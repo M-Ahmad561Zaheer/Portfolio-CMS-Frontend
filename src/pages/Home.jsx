@@ -5,7 +5,7 @@ import api from "../api/api";
 import { subscribeToProfileUpdates } from "../utils/portfolioUpdates";
 import { RESUME_URL } from "../utils/resume";
 
-const navItems = ["home", "about", "skills", "projects", "experience", "education", "blog", "contact"];
+const navItems = ["home", "about", "projects", "experience", "skills", "education", "blog", "contact"];
 const container = "mx-auto max-w-7xl px-5 sm:px-8";
 const isOn = (profile, key) => profile?.[key] !== false;
 const validUrl = (value) => value && value !== "#" ? value : null;
@@ -19,21 +19,58 @@ const spotifyEmbed = (url) => {
   } catch { return null; }
 };
 
-function Header({ profile }) {
+function Header({ profile, sections }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("home");
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && setActive(entry.target.id)), { rootMargin: "-30% 0px -60%" });
-    navItems.forEach((id) => { const element = document.getElementById(id); if (element) observer.observe(element); });
-    return () => observer.disconnect();
-  }, []);
-  const links = navItems.filter((item) => item === "home" || isOn(profile, `${item}Enabled`));
+    let frame;
+    const updateActive = () => {
+      const available = sections.map(id => document.getElementById(id)).filter(Boolean);
+      let current = available[0]?.id || "home";
+      const offset = 100;
+      for (const section of available) {
+        if (section.getBoundingClientRect().top <= offset) current = section.id;
+      }
+      if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        current = available.at(-1)?.id || current;
+      }
+      setActive(current);
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateActive);
+    };
+    updateActive();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    const observer = new ResizeObserver(schedule);
+    const page = document.querySelector(".portfolio-page");
+    if (page) observer.observe(page);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [sections]);
+  const links = sections;
   return <header className="site-header"><div className={`${container} flex h-[70px] items-center justify-between`}>
     <a href="#home" className="brand">Ahmad<span>.dev</span></a>
-    <nav className="desktop-nav" aria-label="Primary navigation">{links.map((item) => <a key={item} href={`#${item}`} className={active === item ? "active" : ""}>{item}</a>)}</nav>
+    <nav className="desktop-nav" aria-label="Primary navigation">{links.map((item) => <a key={item} href={`#${item}`} className={active === item ? "active" : ""} aria-current={active === item ? "location" : undefined}>{item}</a>)}</nav>
     <div className="hidden items-center gap-2 lg:flex">{validUrl(profile?.githubUrl) && <a className="icon-button" href={profile.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub"><Github/></a>}{validUrl(profile?.linkedinUrl) && <a className="icon-button" href={profile.linkedinUrl} target="_blank" rel="noreferrer" aria-label="LinkedIn"><Linkedin/></a>}<a className="primary-button compact" href={RESUME_URL} target="_blank" rel="noreferrer">Download CV</a></div>
     <button className="icon-button lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle navigation">{open ? <X/> : <Menu/>}</button>
-  </div>{open && <nav className="mobile-nav" aria-label="Mobile navigation">{links.map((item) => <a key={item} href={`#${item}`} onClick={() => setOpen(false)}>{item}</a>)}<div className="mobile-proof-links">{validUrl(profile?.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile?.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}<a href={RESUME_URL} target="_blank" rel="noreferrer"><ExternalLink/>Download CV</a></div></nav>}</header>;
+  </div>{open && <nav className="mobile-nav" aria-label="Mobile navigation">{links.map((item) => <a key={item} href={`#${item}`} className={active === item ? "active" : ""} aria-current={active === item ? "location" : undefined} onClick={() => setOpen(false)}>{item}</a>)}<div className="mobile-proof-links">{validUrl(profile?.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile?.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}<a href={RESUME_URL} target="_blank" rel="noreferrer"><ExternalLink/>Download CV</a></div></nav>}</header>;
+}
+
+function CompactDescription({ text = "", bullets = false }) {
+  const parts = text.split(/\n+|(?<=[.!?])\s+/).map(part => part.replace(/^\s*[•-]\s*/, "").trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const limit = bullets ? 3 : 2;
+  const visible = parts.slice(0, limit);
+  return <div className="compact-description">
+    {bullets ? <ul>{visible.map((part, index) => <li key={index}>{part}</li>)}</ul> : <p>{visible.join(" ")}</p>}
+    {parts.length > limit && <details><summary>Read more</summary><p>{parts.slice(limit).join("\n\n")}</p></details>}
+  </div>;
 }
 
 function CodeWindow({ profile }) {
@@ -122,36 +159,49 @@ export default function Home() {
   const { profile, projects, skills, experiences, blogs, educations } = data;
   const skillGroups = useMemo(() => skills.reduce((groups, skill) => { (groups[skill.category || "Other"] ||= []).push(skill); return groups; }, {}), [skills]);
   const exploring = splitItems(profile.exploringItems);
+  const sections = useMemo(() => navItems.filter(id => {
+    if (id === "home") return true;
+    if (id === "blog") return (isOn(profile, "blogEnabled") && blogs.length > 0) || (profile.exploringEnabled && splitItems(profile.exploringItems).length > 0);
+    const counts = { projects: projects.length, experience: experiences.length, skills: skills.length, education: educations.length };
+    return isOn(profile, `${id}Enabled`) && (!(id in counts) || counts[id] > 0);
+  }), [profile, projects.length, experiences.length, skills.length, educations.length, blogs.length]);
   const submit = async (event) => {
     event.preventDefault(); if (formState.busy) return;
     setFormState({ busy: true, message: "", error: false });
     try { await api.post("/Contact", form); setForm({ name: "", email: "", message: "" }); setFormState({ busy: false, message: "Thanks — your message has been sent.", error: false }); }
     catch (error) { setFormState({ busy: false, message: error.response?.data?.message || "Message could not be sent. Please try again.", error: true }); }
   };
-  return <main className="portfolio-page"><Header profile={profile}/>
+  return <main className="portfolio-page"><Header profile={profile} sections={sections}/>
     {/* Testimonials, Services, AI Assistant and duplicate Stats are intentionally not rendered on the public portfolio. Their admin/backend data remains untouched. */}
     <section id="home" className={`${container} hero`}><div className="hero-copy">{profile.availabilityText && <div className="availability"><span/>{profile.availabilityText}</div>}<p className="kicker">Hi, I&apos;m</p><h1>{profile.fullName || "Ahmad Zaheer"}</h1><h2>{profile.role || ".NET & React Developer"}</h2><p className="hero-intro">{profile.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="hero-actions"><a className="primary-button" href="#projects">View My Work <ArrowRight/></a><a className="secondary-button" href="#contact">Let&apos;s Connect</a></div><HeroStats projects={projects} skills={skills} experiences={experiences} githubUrl={profile.githubUrl}/></div><CodeWindow profile={profile}/></section>
 
     <section className="credibility-strip"><div className={`${container} credibility-grid`}>{[[Boxes,"Real Projects","Built end-to-end"],[Code2,"Clean Code","Maintainable solutions"],[Server,"Modern Stack","Practical technologies"],[Sparkles,"Continuous Learning","Improving consistently"]].map(([Icon,title,text]) => <div key={title}><Icon/><span><b>{title}</b><small>{text}</small></span></div>)}</div></section>
 
-    {isOn(profile,"aboutEnabled") && <section id="about" className="section-block surface"><div className={`${container} philosophy`}><div><p className="kicker">About</p><h2>Engineering Philosophy</h2><p>{profile.about || profile.shortBio}</p></div><div>{["Solve real problems with practical solutions","Write clean, testable and maintainable code","Keep learning and ship consistently"].map((text,index) => <div className="principle" key={text}><span>0{index+1}</span><b>{text}</b></div>)}</div></div></section>}
-
-    {isOn(profile,"skillsEnabled") && skills.length > 0 && <section id="skills" className="section-block"><div className={container}><div className="section-heading"><p className="kicker">Technical Expertise</p><h2>Tools I Use to Build</h2><p>A practical toolkit shaped by real projects and continuous learning.</p></div><div className="skill-grid">{Object.entries(skillGroups).map(([category,items]) => <article className="skill-card" key={category}><div className="skill-title"><Code2/><h3>{category}</h3></div><div>{items.map((skill) => <span key={skill.id}>{skill.iconUrl&&<img src={skill.iconUrl} alt=""/>}{skill.name}{skill.proficiency && <small>{skill.proficiency}</small>}</span>)}</div></article>)}</div></div></section>}
+    {isOn(profile,"aboutEnabled") && <section id="about" className="section-block surface"><div className={`${container} philosophy`}><div><p className="kicker">About</p><h2>Engineering Philosophy</h2><CompactDescription text={profile.about || profile.shortBio}/></div><div>{["Solve real problems with practical solutions","Write clean, testable and maintainable code","Keep learning and ship consistently"].map((text,index) => <div className="principle" key={text}><span>0{index+1}</span><b>{text}</b></div>)}</div></div></section>}
 
     {isOn(profile,"projectsEnabled") && projects.length > 0 && <section id="projects" className="section-block tint"><div className={container}><div className="section-heading split"><div><p className="kicker">Portfolio</p><h2>Selected Engineering Work</h2><p>Applications and systems built to solve practical problems.</p></div>{projects.length > 3 && <button className="text-link" onClick={() => setShowAllProjects(!showAllProjects)}>{showAllProjects ? "Show Selected" : "View All Projects"} <ArrowRight/></button>}</div><div className="project-grid">{projects.slice(0,showAllProjects ? projects.length : 3).map((project) => <article className="project-card" key={project.id}><div className="project-media">{project.imageUrl ? <img src={project.imageUrl} alt={`${project.title} screenshot`} loading="lazy" onError={(event) => event.currentTarget.parentElement.classList.add("image-error")}/> : <Code2/>}</div><div className="project-body"><div className="project-top"><h3>{project.title}</h3><div>{validUrl(project.githubUrl) && <a href={project.githubUrl} target="_blank" rel="noreferrer" aria-label={`${project.title} GitHub repository`}><Github/></a>}{validUrl(project.liveUrl) && <a href={project.liveUrl} target="_blank" rel="noreferrer" aria-label={`${project.title} live demo`}><ExternalLink/></a>}</div></div><p>{project.description}</p><div className="tech-list">{splitItems(project.techStack).map((tech) => <span key={tech}>{tech}</span>)}</div><ProjectBuildSummary project={project}/>{[project.longDescription,project.problem,project.solution,project.technicalApproach].some(Boolean)&&<a className="text-link case-link" href={`/projects/${project.slug||project.id}`}>View Full Case Study <ArrowRight/></a>}</div></article>)}</div></div></section>}
 
-    {/* Music is intentionally independent from Projects so its admin toggle always works. */}
-    {profile.musicEnabled && spotifyEmbed(profile.musicUrl) && <section className="music-section"><div className={container}><MusicCard profile={profile}/></div></section>}
+    {isOn(profile,"experienceEnabled") && experiences.length > 0 && <section id="experience" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Journey</p><h2>Experience & Learning Journey</h2><p>Practical experience, steady growth and lessons carried into every build.</p></div><div className="timeline">{experiences.map((item) => <article key={item.id}><span className="timeline-dot"/><time>{item.startDate} — {item.isCurrent ? "Present" : item.endDate?.replace(/Augest/gi, "August")}</time><h3>{item.title}</h3><h4>{item.company}{item.employmentType&&` · ${item.employmentType.replace(/full-time/gi, "Full-Time")}`}{item.location&&` · ${item.location}`}</h4><CompactDescription text={item.description} bullets/>{item.technologies&&<div className="tech-list">{splitItems(item.technologies).map(tech=><span key={tech}>{tech}</span>)}</div>}</article>)}</div></div></section>}
+
+    {isOn(profile,"skillsEnabled") && skills.length > 0 && <section id="skills" className="section-block"><div className={container}><div className="section-heading"><p className="kicker">Technical Expertise</p><h2>Tools I Use to Build</h2><p>A practical toolkit shaped by real projects and continuous learning.</p></div><div className="skill-grid">{Object.entries(skillGroups).map(([category,items]) => <article className="skill-card" key={category}><div className="skill-title"><Code2/><h3>{category}</h3></div><div>{items.map((skill) => <span key={skill.id}>{skill.iconUrl&&<img src={skill.iconUrl} alt=""/>}{skill.name}{skill.proficiency && <small>{skill.proficiency}</small>}</span>)}</div></article>)}</div></div></section>}
+
+    {isOn(profile,"educationEnabled") && educations.length > 0 && <section id="education" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Education</p><h2>Academic Journey</h2><p>Qualifications and learning that shaped my work.</p></div><div className="timeline">{educations.map(item => <article key={item.id}><span className="timeline-dot"/><time>{[item.startDate, item.isCurrent ? "Present" : item.endDate].filter(Boolean).join(" — ")}</time><h3>{item.degree === "BS Software Engineer" ? "BS Software Engineering" : item.degree}</h3><h4>{item.institution}{item.location && ` · ${item.location}`}</h4>{item.grade && <div className="tech-list"><span>Grade / CGPA: {item.grade}</span></div>}{item.description && <CompactDescription text={item.description}/>}</article>)}</div></div></section>}
+
+    {isOn(profile,"architectureEnabled") && <section id="architecture" className="section-block"><div className={container}><div className="section-heading centered"><p className="kicker">How This Portfolio Works</p><h2>{profile.architectureTitle || "System Design & Architecture"}</h2><p>{profile.architectureDescription}</p></div><ArchitectureDiagram/></div></section>}
 
     <GitHubActivity profile={profile}/>
 
-    {isOn(profile,"educationEnabled") && educations.length > 0 && <section id="education" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Education</p><h2>Academic Journey</h2><p>Qualifications and learning that shaped my work.</p></div><div className="timeline">{educations.map(item => <article key={item.id}><span className="timeline-dot"/><time>{[item.startDate, item.isCurrent ? "Present" : item.endDate].filter(Boolean).join(" — ")}</time><h3>{item.degree}</h3><h4>{item.institution}{item.location && ` · ${item.location}`}</h4>{item.grade && <div className="tech-list"><span>Grade / CGPA: {item.grade}</span></div>}{item.description && <p className="whitespace-pre-line">{item.description}</p>}</article>)}</div></div></section>}
-
-    {isOn(profile,"experienceEnabled") && experiences.length > 0 && <section id="experience" className="section-block surface"><div className={container}><div className="section-heading"><p className="kicker">Journey</p><h2>Experience & Learning Journey</h2><p>Practical experience, steady growth and lessons carried into every build.</p></div><div className="timeline">{experiences.map((item) => <article key={item.id}><span className="timeline-dot"/><time>{item.startDate} — {item.isCurrent ? "Present" : item.endDate}</time><h3>{item.title}</h3><h4>{item.company}{item.employmentType&&` · ${item.employmentType}`}{item.location&&` · ${item.location}`}</h4><p>{item.description}</p>{item.technologies&&<div className="tech-list">{splitItems(item.technologies).map(tech=><span key={tech}>{tech}</span>)}</div>}</article>)}</div></div></section>}
-
-    {isOn(profile,"architectureEnabled") && <section id="architecture" className="section-block"><div className={container}><div className="section-heading centered"><p className="kicker">How I Think</p><h2>{profile.architectureTitle || "System Design & Architecture"}</h2><p>{profile.architectureDescription}</p></div><ArchitectureDiagram/></div></section>}
-
     {(isOn(profile,"blogEnabled") && blogs.length > 0) || (profile.exploringEnabled && exploring.length > 0) ? <section id="blog" className="section-block tint"><div className={container}>{isOn(profile,"blogEnabled") && blogs.length > 0 && <><div className="section-heading split"><div><p className="kicker">Writing</p><h2>Latest Insights</h2><p>Notes from projects, problems and things I am learning.</p></div>{blogs.length > 3 && <button className="text-link" onClick={() => setShowAllArticles(!showAllArticles)}>{showAllArticles ? "Show Latest" : "View All Articles"} <ArrowRight/></button>}</div><div className={`blog-grid count-${Math.min(blogs.length,3)}`}>{blogs.slice(0,showAllArticles ? blogs.length : 3).map((post) => <article className="blog-card" key={post.id}>{post.thumbnail ? <img src={post.thumbnail} alt="" loading="lazy"/> : <div className="blog-placeholder"><BookOpen/></div>}<div><div className="blog-meta">{post.category&&<span>{post.category}</span>}<time>{new Date(post.publishedAt||post.createdAt).toLocaleDateString()}</time>{post.readingTime>0&&<span>{post.readingTime} min read</span>}</div><h3>{post.title}</h3><p>{post.excerpt||post.content}</p><details><summary className="text-link">Read More <ArrowRight/></summary><div className="article-content">{post.content}</div></details></div></article>)}</div></>}{profile.exploringEnabled && exploring.length > 0 && <div className="exploring"><div><p className="kicker">Growth</p><h2>Currently Exploring</h2><p>Ideas and technologies I am actively learning—not claiming to have mastered.</p></div><div>{exploring.map((item) => <span key={item}><Sparkles/>{item}<small>{profile.exploringStatus || "Learning"}</small></span>)}</div></div>}</div></section> : null}
+
+    {profile.musicEnabled && spotifyEmbed(profile.musicUrl) && <section className="music-section"><div className={container}><MusicCard profile={profile}/></div></section>}
+
+
+
+
+
+
+
+
 
     {isOn(profile,"contactEnabled") && <section id="contact" className="section-block"><div className={`${container} contact-layout`}><div><p className="kicker">Contact</p><h2>{profile.contactTitle || "Let's Build Something Great"}</h2><p>{profile.contactSubtitle || "Have a project, opportunity or idea? I'd be glad to hear about it."}</p><div className="contact-details">{profile.email && <a href={`mailto:${profile.email}`}><Mail/>{profile.email}</a>}{profile.phone && <a href={`tel:${profile.phone}`}><Phone/>{profile.phone}</a>}{profile.location && <span><MapPin/>{profile.location}</span>}</div></div>{profile.contactFormEnabled !== false && <form className="contact-form" onSubmit={submit}><label>Name<input required minLength="2" maxLength="100" value={form.name} onChange={(event) => setForm({...form,name:event.target.value})}/></label><label>Email<input required type="email" maxLength="160" value={form.email} onChange={(event) => setForm({...form,email:event.target.value})}/></label><label>Message<textarea required minLength="10" maxLength="3000" rows="5" value={form.message} onChange={(event) => setForm({...form,message:event.target.value})}/></label>{formState.message && <p role="status" className={formState.error ? "error" : "success"}>{formState.message}</p>}<button className="primary-button" disabled={formState.busy}>{formState.busy ? "Sending…" : "Send Message"}<ArrowRight/></button></form>}</div></section>}
     <footer><div className={container}><p>© {new Date().getFullYear()} {profile.fullName || "Ahmad Zaheer"}. All rights reserved.</p><div className="footer-links">{validUrl(profile.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}{profile.email && <a href={`mailto:${profile.email}`}><Mail/>Email</a>}</div><p>Built with ❤️ and lots of ☕</p></div></footer>
