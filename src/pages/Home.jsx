@@ -115,22 +115,9 @@ function MusicCard({ profile }) {
 }
 
 function GitHubActivity({ profile }) {
-  const [repos, setRepos] = useState([]);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!validUrl(profile?.githubUrl)) return;
-    try {
-      const username = new URL(profile.githubUrl).pathname.split("/").filter(Boolean)[0];
-      if (!username) return;
-      fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=3`)
-        .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
-        .then((items) => setRepos(safe(items).filter((repo) => !repo.fork).slice(0, 3)))
-        .catch(() => setFailed(true));
-    } catch { setFailed(true); }
-  }, [profile?.githubUrl]);
   if (!isOn(profile, "githubEnabled") || !validUrl(profile?.githubUrl)) return null;
   return <section id="github" className="section-block"><div className={container}><div className="github-heading"><div><p className="kicker">Proof of work</p><h2>GitHub Activity</h2><p>Real repositories, experiments and code behind the work.</p></div><a className="text-link" href={profile.githubUrl} target="_blank" rel="noreferrer">View GitHub Profile <ArrowRight/></a></div>
-    {repos.length > 0 ? <div className="repo-grid">{repos.map((repo) => <a className="repo-card" href={repo.html_url} target="_blank" rel="noreferrer" key={repo.id}><Github/><div><h3>{repo.name}</h3><p>{repo.description || "Explore this repository on GitHub."}</p><span>{repo.language || "Repository"} · Updated {new Date(repo.updated_at).toLocaleDateString()}</span></div><ExternalLink/></a>)}</div> : <div className="github-fallback"><Github/><p>{failed ? "Live repository data is temporarily unavailable." : "Loading recent repositories…"}</p><a href={profile.githubUrl} target="_blank" rel="noreferrer">Open profile</a></div>}
+    <div className="github-fallback"><Github/><p>Explore my source code, experiments and latest engineering work directly on GitHub.</p><a href={profile.githubUrl} target="_blank" rel="noreferrer">Open profile <ArrowRight/></a></div>
   </div></section>;
 }
 
