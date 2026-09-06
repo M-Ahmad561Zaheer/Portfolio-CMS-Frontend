@@ -1,1 +1,1 @@
-export const RESUME_URL = "/Muhammad%20Ahmad%20Zaheer_CV.pdf";
+export const RESUME_URL = "/Ahmad_Resume.pdf";
