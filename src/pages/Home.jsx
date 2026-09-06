@@ -114,11 +114,22 @@ function MusicCard({ profile }) {
   return <section className="music-shell" aria-labelledby="music-title"><div className="music-copy"><div className="music-art">{profile.musicCoverUrl ? <img src={profile.musicCoverUrl} alt="Playlist cover"/> : <Music2/>}</div><div><span>{profile.musicLabel || "Focus Mode"}</span><h3 id="music-title">{profile.musicHeading || "While You Browse"} 🎧</h3><p>{profile.musicDescription || "Play some lo-fi beats and stay in the zone."}</p><a href={profile.musicUrl} target="_blank" rel="noreferrer">Open in Spotify <ArrowRight/></a></div></div><iframe src={embed} height="152" title="Spotify music player" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"/></section>;
 }
 
-function GitHubActivity({ profile, projects }) {
+function GitHubActivity({ profile }) {
+  const [repos, setRepos] = useState([]);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!validUrl(profile?.githubUrl)) return;
+    try {
+      const username = new URL(profile.githubUrl).pathname.split("/").filter(Boolean)[0];
+      if (!username) return;
+      api.get("/GitHub/repos", { params: { username } })
+        .then(({ data }) => setRepos(safe(data)))
+        .catch(() => setFailed(true));
+    } catch { setFailed(true); }
+  }, [profile?.githubUrl]);
   if (!isOn(profile, "githubEnabled") || !validUrl(profile?.githubUrl)) return null;
-  const repositories = safe(projects).filter((project) => validUrl(project.githubUrl)).slice(0, 3);
   return <section id="github" className="section-block"><div className={container}><div className="github-heading"><div><p className="kicker">Proof of work</p><h2>GitHub Activity</h2><p>Real repositories, experiments and code behind the work.</p></div><a className="text-link" href={profile.githubUrl} target="_blank" rel="noreferrer">View GitHub Profile <ArrowRight/></a></div>
-    {repositories.length > 0 ? <div className="repo-grid">{repositories.map((project) => <a className="repo-card" href={project.githubUrl} target="_blank" rel="noreferrer" key={project.id}><Github/><div><h3>{project.title}</h3><p>{project.description || "Explore this project repository on GitHub."}</p><span>{splitItems(project.techStack).slice(0, 4).join(" · ") || "Source repository"}</span></div><ExternalLink/></a>)}</div> : <div className="github-fallback"><Github/><p>Add a GitHub URL to your projects in the admin panel to feature repositories here.</p><a href={profile.githubUrl} target="_blank" rel="noreferrer">Open profile <ArrowRight/></a></div>}
+    {repos.length > 0 ? <div className="repo-grid">{repos.map((repo) => <a className="repo-card" href={repo.htmlUrl} target="_blank" rel="noreferrer" key={repo.id}><Github/><div><h3>{repo.name}</h3><p>{repo.description || "Explore this repository on GitHub."}</p><span>{repo.language || "Repository"} · Updated {new Date(repo.updatedAt).toLocaleDateString()}</span></div><ExternalLink/></a>)}</div> : <div className="github-fallback"><Github/><p>{failed ? "Repositories are temporarily unavailable." : "Loading latest repositories…"}</p><a href={profile.githubUrl} target="_blank" rel="noreferrer">Open profile <ArrowRight/></a></div>}
   </div></section>;
 }
 
@@ -177,7 +188,7 @@ export default function Home() {
 
     {isOn(profile,"architectureEnabled") && <section id="architecture" className="section-block"><div className={container}><div className="section-heading centered"><p className="kicker">How This Portfolio Works</p><h2>{profile.architectureTitle || "System Design & Architecture"}</h2><p>{profile.architectureDescription}</p></div><ArchitectureDiagram/></div></section>}
 
-    <GitHubActivity profile={profile} projects={projects}/>
+    <GitHubActivity profile={profile}/>
 
     {(isOn(profile,"blogEnabled") && blogs.length > 0) || (profile.exploringEnabled && exploring.length > 0) ? <section id="blog" className="section-block tint"><div className={container}>{isOn(profile,"blogEnabled") && blogs.length > 0 && <><div className="section-heading split"><div><p className="kicker">Writing</p><h2>Latest Insights</h2><p>Notes from projects, problems and things I am learning.</p></div>{blogs.length > 3 && <button className="text-link" onClick={() => setShowAllArticles(!showAllArticles)}>{showAllArticles ? "Show Latest" : "View All Articles"} <ArrowRight/></button>}</div><div className={`blog-grid count-${Math.min(blogs.length,3)}`}>{blogs.slice(0,showAllArticles ? blogs.length : 3).map((post) => <article className="blog-card" key={post.id}>{post.thumbnail ? <img src={post.thumbnail} alt="" loading="lazy"/> : <div className="blog-placeholder"><BookOpen/></div>}<div><div className="blog-meta">{post.category&&<span>{post.category}</span>}<time>{new Date(post.publishedAt||post.createdAt).toLocaleDateString()}</time>{post.readingTime>0&&<span>{post.readingTime} min read</span>}</div><h3>{post.title}</h3><p>{post.excerpt||post.content}</p><details><summary className="text-link">Read More <ArrowRight/></summary><div className="article-content">{post.content}</div></details></div></article>)}</div></>}{profile.exploringEnabled && exploring.length > 0 && <div className="exploring"><div><p className="kicker">Growth</p><h2>Currently Exploring</h2><p>Ideas and technologies I am actively learning—not claiming to have mastered.</p></div><div>{exploring.map((item) => <span key={item}><Sparkles/>{item}<small>{profile.exploringStatus || "Learning"}</small></span>)}</div></div>}</div></section> : null}
 
