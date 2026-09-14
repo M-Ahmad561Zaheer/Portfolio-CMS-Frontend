@@ -238,6 +238,18 @@ const AIAssistant = () => {
       "database",
     ]);
 
+    const asksForEducation = includesAny(q, [
+      "education",
+      "educational background",
+      "academic",
+      "qualification",
+      "degree",
+      "university",
+      "college",
+      "study",
+      "studies",
+    ]);
+
     if (asksForResume) {
       return {
         type: "resume",
@@ -273,6 +285,7 @@ const AIAssistant = () => {
     }
 
     if (
+      !asksForEducation &&
       includesAny(q, [
         "who is",
         "about",
@@ -359,19 +372,7 @@ const AIAssistant = () => {
       };
     }
 
-    if (
-      includesAny(q, [
-        "education",
-        "educational background",
-        "academic",
-        "qualification",
-        "degree",
-        "university",
-        "college",
-        "study",
-        "studies",
-      ])
-    ) {
+    if (asksForEducation) {
       if (educations.length === 0) {
         return {
           type: "text",
@@ -522,7 +523,6 @@ const AIAssistant = () => {
       { label: "Tech Stack", query: "What is your tech stack?" },
       { label: "Services", query: "What services do you offer?" },
       { label: "Experience", query: "Show your experience" },
-      { label: "Education", query: "Tell me about your education" },
     ];
 
     prompts.push({
@@ -543,7 +543,7 @@ const AIAssistant = () => {
             {[
               "Explore projects and case studies",
               "Review skills and technologies",
-              "See education and experience",
+              "See experience and career journey",
               "Check services and availability",
               "View resume and contact details",
             ].map((item) => (
