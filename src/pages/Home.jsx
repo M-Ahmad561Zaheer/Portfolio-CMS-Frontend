@@ -1,4 +1,5 @@
 import ArchitectureDiagram from "../components/ArchitectureDiagram";
+import AIAssistant from "../components/AIAssistant";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BookOpen, Boxes, BriefcaseBusiness, Code2, ExternalLink, Github, Linkedin, Mail, MapPin, Menu, Music2, Phone, Server, Sparkles, X } from "lucide-react";
 import api from "../api/api";
@@ -171,7 +172,7 @@ export default function Home() {
     catch (error) { setFormState({ busy: false, message: error.response?.data?.message || "Message could not be sent. Please try again.", error: true }); }
   };
   return <main className="portfolio-page"><Header profile={profile} sections={sections}/>
-    {/* Testimonials, Services, AI Assistant and duplicate Stats are intentionally not rendered on the public portfolio. Their admin/backend data remains untouched. */}
+    {/* Testimonials, Services and duplicate Stats remain hidden on the public portfolio. */}
     <section id="home" className={`${container} hero`}><div className="hero-copy">{profile.availabilityText && <div className="availability"><span/>{profile.availabilityText}</div>}<p className="kicker">Hi, I&apos;m</p><h1>{profile.fullName || "Ahmad Zaheer"}</h1><h2>{profile.role || ".NET & React Developer"}</h2><p className="hero-intro">{profile.shortBio || "Building thoughtful web applications, APIs, dashboards and practical software while learning every day."}</p><div className="hero-actions"><a className="primary-button" href="#projects">View My Work <ArrowRight/></a><a className="secondary-button" href="#contact">Let&apos;s Connect</a></div><HeroStats projects={projects} skills={skills} experiences={experiences} githubUrl={profile.githubUrl}/></div><CodeWindow profile={profile}/></section>
 
     <section className="credibility-strip"><div className={`${container} credibility-grid`}>{[[Boxes,"Real Projects","Built end-to-end"],[Code2,"Clean Code","Maintainable solutions"],[Server,"Modern Stack","Practical technologies"],[Sparkles,"Continuous Learning","Improving consistently"]].map(([Icon,title,text]) => <div key={title}><Icon/><span><b>{title}</b><small>{text}</small></span></div>)}</div></section>
@@ -204,5 +205,6 @@ export default function Home() {
 
     {isOn(profile,"contactEnabled") && <section id="contact" className="section-block"><div className={`${container} contact-layout`}><div><p className="kicker">Contact</p><h2>{profile.contactTitle || "Let's Build Something Great"}</h2><p>{profile.contactSubtitle || "Have a project, opportunity or idea? I'd be glad to hear about it."}</p><div className="contact-details">{profile.email && <a href={`mailto:${profile.email}`}><Mail/>{profile.email}</a>}{profile.phone && <a href={`tel:${profile.phone}`}><Phone/>{profile.phone}</a>}{profile.location && <span><MapPin/>{profile.location}</span>}</div></div>{profile.contactFormEnabled !== false && <form className="contact-form" onSubmit={submit}><label>Name<input required minLength="2" maxLength="100" value={form.name} onChange={(event) => setForm({...form,name:event.target.value})}/></label><label>Email<input required type="email" maxLength="160" value={form.email} onChange={(event) => setForm({...form,email:event.target.value})}/></label><label>Message<textarea required minLength="10" maxLength="3000" rows="5" value={form.message} onChange={(event) => setForm({...form,message:event.target.value})}/></label>{formState.message && <p role="status" className={formState.error ? "error" : "success"}>{formState.message}</p>}<button className="primary-button" disabled={formState.busy}>{formState.busy ? "Sending…" : "Send Message"}<ArrowRight/></button></form>}</div></section>}
     <footer><div className={container}><p>© {new Date().getFullYear()} {profile.fullName || "Ahmad Zaheer"}. All rights reserved.</p><div className="footer-links">{validUrl(profile.githubUrl) && <a href={profile.githubUrl} target="_blank" rel="noreferrer"><Github/>GitHub</a>}{validUrl(profile.linkedinUrl) && <a href={profile.linkedinUrl} target="_blank" rel="noreferrer"><Linkedin/>LinkedIn</a>}{profile.email && <a href={`mailto:${profile.email}`}><Mail/>Email</a>}</div><p>Built with ❤️ and lots of ☕</p></div></footer>
+    <AIAssistant />
   </main>;
 }

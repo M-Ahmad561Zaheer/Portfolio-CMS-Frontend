@@ -61,7 +61,7 @@ const AIAssistant = () => {
     () => ({
       sender: "bot",
       type: "welcome",
-      text: "Hi! I’m Ahmad’s portfolio assistant. I can help you explore projects, skills, services, experience, blogs, testimonials, resume, and contact details.",
+      text: "Hi! I’m Ahmad’s AI portfolio assistant, available 24/7 when Ahmad is away. I can answer questions about his projects, skills, services, experience, resume, and contact options. For commitments or final quotes, Ahmad will follow up personally.",
     }),
     []
   );
@@ -445,7 +445,7 @@ const AIAssistant = () => {
 
     return {
       type: "help",
-      text: "I can help with projects, technologies, services, experience, blogs, testimonials, resume, pricing, CMS features, and contact information.",
+      text: "I’m Ahmad’s AI assistant, so I can help with projects, technologies, services, experience, blogs, testimonials, resume, pricing, and CMS features. If you’d like Ahmad to follow up personally, please use the contact form below.",
     };
   };
 
