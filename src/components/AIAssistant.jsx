@@ -51,6 +51,7 @@ const AIAssistant = () => {
   const [blogs, setBlogs] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [experiences, setExperiences] = useState([]);
+  const [educations, setEducations] = useState([]);
   const [skills, setSkills] = useState([]);
   const [services, setServices] = useState([]);
 
@@ -61,7 +62,7 @@ const AIAssistant = () => {
     () => ({
       sender: "bot",
       type: "welcome",
-      text: "Hi! I’m Ahmad’s AI portfolio assistant, available 24/7 when Ahmad is away. I can answer questions about his projects, skills, services, experience, resume, and contact options. For commitments or final quotes, Ahmad will follow up personally.",
+      text: "Hi! I’m Ahmad’s AI portfolio assistant, available 24/7 when Ahmad is away. I can answer questions about his projects, skills, services, education, experience, resume, and contact options. For commitments or final quotes, Ahmad will follow up personally.",
     }),
     []
   );
@@ -103,6 +104,7 @@ const AIAssistant = () => {
       ["blogs", "/Blogs"],
       ["testimonials", "/Testimonials"],
       ["experiences", "/Experiences"],
+      ["educations", "/Educations"],
       ["skills", "/Skills"],
       ["services", "/Services"],
     ];
@@ -121,6 +123,7 @@ const AIAssistant = () => {
       if (key === "blogs") setBlogs(safeArray(data));
       if (key === "testimonials") setTestimonials(safeArray(data));
       if (key === "experiences") setExperiences(safeArray(data));
+      if (key === "educations") setEducations(safeArray(data));
       if (key === "skills") setSkills(safeArray(data));
       if (key === "services") setServices(safeArray(data));
     });
@@ -358,6 +361,33 @@ const AIAssistant = () => {
 
     if (
       includesAny(q, [
+        "education",
+        "educational background",
+        "academic",
+        "qualification",
+        "degree",
+        "university",
+        "college",
+        "study",
+        "studies",
+      ])
+    ) {
+      if (educations.length === 0) {
+        return {
+          type: "text",
+          text: "No education records are available yet.",
+        };
+      }
+
+      return {
+        type: "educations",
+        text: "Here is Ahmad’s educational background:",
+        data: educations,
+      };
+    }
+
+    if (
+      includesAny(q, [
         "experience",
         "journey",
         "work history",
@@ -445,7 +475,7 @@ const AIAssistant = () => {
 
     return {
       type: "help",
-      text: "I’m Ahmad’s AI assistant, so I can help with projects, technologies, services, experience, blogs, testimonials, resume, pricing, and CMS features. If you’d like Ahmad to follow up personally, please use the contact form below.",
+      text: "I’m Ahmad’s AI assistant, so I can help with projects, technologies, services, education, experience, blogs, testimonials, resume, pricing, and CMS features. If you’d like Ahmad to follow up personally, please use the contact form below.",
     };
   };
 
@@ -492,6 +522,7 @@ const AIAssistant = () => {
       { label: "Tech Stack", query: "What is your tech stack?" },
       { label: "Services", query: "What services do you offer?" },
       { label: "Experience", query: "Show your experience" },
+      { label: "Education", query: "Tell me about your education" },
     ];
 
     prompts.push({
@@ -512,6 +543,7 @@ const AIAssistant = () => {
             {[
               "Explore projects and case studies",
               "Review skills and technologies",
+              "See education and experience",
               "Check services and availability",
               "View resume and contact details",
             ].map((item) => (
@@ -726,6 +758,49 @@ const AIAssistant = () => {
                 {experience.description && (
                   <p className="mt-2 text-[11px] leading-5 text-slate-400">
                     {experience.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (message.type === "educations") {
+      return (
+        <div className="space-y-3">
+          <p>{message.text}</p>
+
+          <div className="space-y-2 border-l border-emerald-500/30 pl-3">
+            {message.data?.map((education) => (
+              <div
+                key={education.id}
+                className="relative rounded-xl border border-white/5 bg-white/[0.03] p-3"
+              >
+                <span className="absolute -left-[17px] top-4 h-2 w-2 rounded-full bg-emerald-400" />
+                <p className="text-xs font-semibold text-white">
+                  {education.degree}
+                </p>
+                <p className="mt-1 text-[11px] text-emerald-400">
+                  {education.institution}
+                  {education.location ? ` · ${education.location}` : ""}
+                </p>
+                {(education.startDate || education.endDate || education.isCurrent) && (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {[education.startDate, education.isCurrent ? "Present" : education.endDate]
+                      .filter(Boolean)
+                      .join(" — ")}
+                  </p>
+                )}
+                {education.grade && (
+                  <p className="mt-2 text-[11px] font-medium text-slate-300">
+                    Grade / CGPA: {education.grade}
+                  </p>
+                )}
+                {education.description && (
+                  <p className="mt-2 text-[11px] leading-5 text-slate-400">
+                    {education.description}
                   </p>
                 )}
               </div>
